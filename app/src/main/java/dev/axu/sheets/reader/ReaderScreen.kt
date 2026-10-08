@@ -11,6 +11,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -39,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.ink.rendering.android.canvas.CanvasStrokeRenderer
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -112,7 +114,7 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
         if (page != null && page != pagerState.currentPage) scope.launch { pagerState.animateScrollToPage(page) }
     }
 
-    Box(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
         HorizontalPager(
             state = pagerState,
             beyondViewportPageCount = 1,
@@ -155,19 +157,34 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
             }
         }
 
-        AnimatedVisibility(chromeVisible, enter = fadeIn(), exit = fadeOut()) {
-            DisposableEffect(Unit) { onDispose { inkTargets.onExclusionRemoved(ToolbarKey) } }
-            ReaderToolbar(
-                title = title,
-                page = pagerState.currentPage + 1,
-                pageCount = document.pageCount,
-                canUndo = ink.canUndo,
-                canRedo = ink.canRedo,
+        val toolbarState = ToolbarState(
+            title = title,
+            page = pagerState.currentPage + 1,
+            pageCount = document.pageCount,
+            canUndo = ink.canUndo,
+            canRedo = ink.canRedo,
+        )
+        val toolbarActions = remember(viewModel) {
+            ToolbarActions(
+                onBack = onBack,
                 onUndo = { edit("Undo", viewModel::undo) },
                 onRedo = { edit("Redo", viewModel::redo) },
-                onBack = onBack,
-                modifier = Modifier.onGloballyPositioned { inkTargets.onExclusionPositioned(ToolbarKey, it) },
             )
+        }
+        // Prefer the margin beside the page (landscape), so the toolbar never covers the music.
+        val pageSize = document.pageSizes[pagerState.currentPage]
+        val fittedWidth = with(LocalDensity.current) {
+            (pageSize.width * pageSize.scaleToFit(constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat())).toDp()
+        }
+        val useRail = (maxWidth - fittedWidth) / 2 >= ToolbarRailWidth
+        val toolbarModifier = Modifier.onGloballyPositioned { inkTargets.onExclusionPositioned(ToolbarKey, it) }
+        AnimatedVisibility(chromeVisible, enter = fadeIn(), exit = fadeOut()) {
+            DisposableEffect(Unit) { onDispose { inkTargets.onExclusionRemoved(ToolbarKey) } }
+            if (useRail) {
+                ReaderSideRail(toolbarState, toolbarActions, toolbarModifier)
+            } else {
+                ReaderTopBar(toolbarState, toolbarActions, toolbarModifier)
+            }
         }
 
         TransientMessage(message, onDismiss = { message = null }, Modifier.align(Alignment.BottomCenter))

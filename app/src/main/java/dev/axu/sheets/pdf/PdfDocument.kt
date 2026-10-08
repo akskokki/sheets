@@ -11,9 +11,13 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.FileNotFoundException
+import kotlin.math.min
 
 /** Page dimensions in PDF points (1/72 inch). */
-data class PageSize(val width: Float, val height: Float)
+data class PageSize(val width: Float, val height: Float) {
+    /** The scale at which the page just fits inside [maxWidth] x [maxHeight]. */
+    fun scaleToFit(maxWidth: Float, maxHeight: Float): Float = min(maxWidth / width, maxHeight / height)
+}
 
 /**
  * A read-only PDF backed by the platform [PdfRenderer].

@@ -18,7 +18,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
 import dev.axu.sheets.pdf.PageBitmapCache
 import dev.axu.sheets.pdf.PageSize
-import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
@@ -58,6 +57,6 @@ fun PdfPage(
 }
 
 private fun fitInside(page: PageSize, maxWidth: Int, maxHeight: Int): IntSize {
-    val scale = min(maxWidth / page.width, maxHeight / page.height)
+    val scale = page.scaleToFit(maxWidth.toFloat(), maxHeight.toFloat())
     return IntSize((page.width * scale).roundToInt(), (page.height * scale).roundToInt())
 }
