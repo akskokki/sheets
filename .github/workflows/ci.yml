@@ -53,6 +53,8 @@ jobs:
           api-level: 36
           target: google_apis
           arch: x86_64
+          # Same screen as the target tablet (2560x1600 at 320 dpi).
+          profile: pixel_tablet
           disable-animations: true
           script: ./gradlew connectedDebugAndroidTest
       - if: failure()
