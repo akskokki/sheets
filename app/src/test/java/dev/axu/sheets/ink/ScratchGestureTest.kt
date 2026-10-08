@@ -73,6 +73,14 @@ class ScratchGestureTest {
     }
 
     @Test
+    fun fourTurnsAreNotEnough() {
+        val path = Path().lineTo(0f, 0f)
+        repeat(2) { path.lineTo(20f, 1f).lineTo(0f, 2f) }
+        path.lineTo(20f, 3f)
+        assertFalse(path.matches())
+    }
+
+    @Test
     fun tinyJitterIsIgnored() {
         val path = Path().lineTo(0f, 0f)
         repeat(4) { path.lineTo(1f, 0.2f).lineTo(0f, 0.4f) }
