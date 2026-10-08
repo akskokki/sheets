@@ -18,6 +18,7 @@ class Settings(context: Context) {
     var ignorePalm by setting("ignore_palm", default = true)
     var multiFingerTapUndo by setting("multi_finger_tap_undo", default = true)
     var tapEdgesToTurnPages by setting("tap_edges_to_turn_pages", default = true)
+    var cropMargins by setting("crop_margins", default = true)
     var fullScreen by setting("full_screen", default = true)
     var keepScreenOn by setting("keep_screen_on", default = false)
 

@@ -1,6 +1,7 @@
 package dev.axu.sheets.reader
 
 import android.graphics.Matrix
+import android.graphics.RectF
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -8,7 +9,6 @@ import androidx.ink.brush.Brush
 import androidx.ink.strokes.Stroke
 import dev.axu.sheets.ink.InkTarget
 import dev.axu.sheets.ink.InkTargetResolver
-import dev.axu.sheets.pdf.PageSize
 
 /**
  * Tracks where pages are on screen so stylus input can be mapped onto the page under it.
@@ -16,7 +16,8 @@ import dev.axu.sheets.pdf.PageSize
  * Positions are in the root composable's coordinates, which match the ink host's.
  */
 class PageInkTargets(
-    private val pageSizes: List<PageSize>,
+    /** The part of each page shown, in points. */
+    private val crops: List<RectF>,
     private val brush: () -> Brush,
     private val onStrokeFinished: (page: Int, stroke: Stroke) -> Unit,
 ) : InkTargetResolver {
@@ -48,10 +49,12 @@ class PageInkTargets(
         for ((page, coordinates) in pages) {
             val rect = coordinates.rootRect()
             if (point !in rect) continue
-            val pointsPerPx = pageSizes[page].width / rect.width
+            val crop = crops[page]
+            val pointsPerPx = crop.width() / rect.width
             val hostToPage = Matrix().apply {
                 setTranslate(-rect.left, -rect.top)
                 postScale(pointsPerPx, pointsPerPx)
+                postTranslate(crop.left, crop.top)
             }
             return InkTarget(brush(), hostToPage) { stroke -> onStrokeFinished(page, stroke) }
         }

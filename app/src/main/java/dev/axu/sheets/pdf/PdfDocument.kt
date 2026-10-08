@@ -19,6 +19,8 @@ import kotlin.math.min
 data class PageSize(val width: Float, val height: Float) {
     /** The scale at which the page just fits inside [maxWidth] x [maxHeight]. */
     fun scaleToFit(maxWidth: Float, maxHeight: Float): Float = min(maxWidth / width, maxHeight / height)
+
+    fun toRect() = RectF(0f, 0f, width, height)
 }
 
 /**

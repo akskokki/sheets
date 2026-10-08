@@ -1,5 +1,6 @@
 package dev.axu.sheets.reader
 
+import android.graphics.RectF
 import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.getValue
@@ -25,6 +26,8 @@ sealed interface ReaderState {
         val ink: DocumentInk,
         /** Identifies the document's contents; see [dev.axu.sheets.annotations.AnnotationStore]. */
         val documentKey: String,
+        /** The part of each page shown, in points. */
+        val crops: List<RectF>,
         val initialPage: Int,
     ) : ReaderState
 }
@@ -54,8 +57,13 @@ class ReaderViewModel(
         try {
             val key = container.annotations.keyOf(uri)
             val ink = DocumentInk(container.annotations.load(key))
+            val crops = if (container.settings.cropMargins) {
+                container.crops.of(document, key, ink)
+            } else {
+                document.pageSizes.map { it.toRect() }
+            }
             val page = container.positions.pageOf(key).coerceIn(0, document.pageCount - 1)
-            return ReaderState.Ready(document, PageRenderer(document), ink, key, page)
+            return ReaderState.Ready(document, PageRenderer(document), ink, key, crops, page)
         } catch (e: Exception) {
             document.close()
             throw e

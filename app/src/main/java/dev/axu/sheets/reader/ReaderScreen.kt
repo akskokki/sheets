@@ -50,6 +50,7 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.axu.sheets.appContainer
 import dev.axu.sheets.ink.LocalInkHost
+import dev.axu.sheets.pdf.PageSize
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -109,7 +110,7 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
     val pen = container.pen
     val settings = container.settings
     val inkTargets = remember(document) {
-        PageInkTargets(document.pageSizes, brush = { pen.brush }, onStrokeFinished = viewModel::onStrokeFinished)
+        PageInkTargets(state.crops, brush = { pen.brush }, onStrokeFinished = viewModel::onStrokeFinished)
     }
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.settledPage }.collect { page ->
@@ -173,15 +174,15 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
             DisposableEffect(index) { onDispose { inkTargets.onPageRemoved(index) } }
             PdfPage(
                 index = index,
-                pageSize = document.pageSizes[index],
+                crop = state.crops[index],
                 pages = state.pages,
                 zoom = zoom.takeIf { index == pagerState.currentPage },
                 modifier = Modifier.onGloballyPositioned { inkTargets.onPagePositioned(index, it) },
-            ) { pageToPx ->
-                drawStrokes(ink.strokesOn(index), pageToPx, strokeRenderer)
+            ) { pageToCanvas ->
+                drawStrokes(ink.strokesOn(index), pageToCanvas, strokeRenderer)
                 for (erasure in viewModel.erasures) {
                     if (erasure.page == index) {
-                        drawStrokes(erasure.strokes, pageToPx, strokeRenderer, erasure.alpha.value)
+                        drawStrokes(erasure.strokes, pageToCanvas, strokeRenderer, erasure.alpha.value)
                     }
                 }
             }
@@ -202,7 +203,8 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
             )
         }
         // Prefer the margin beside the page (landscape), so the toolbar never covers the music.
-        val pageSize = document.pageSizes[pagerState.currentPage]
+        val crop = state.crops[pagerState.currentPage]
+        val pageSize = PageSize(crop.width(), crop.height())
         val fittedWidth = with(LocalDensity.current) {
             (pageSize.width * pageSize.scaleToFit(constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat())).toDp()
         }
