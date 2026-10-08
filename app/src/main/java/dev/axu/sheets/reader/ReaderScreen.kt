@@ -76,7 +76,6 @@ fun ReaderScreen(uri: Uri, title: String, onBack: () -> Unit) {
             }
             is ReaderState.Ready -> Reader(
                 state = state,
-                ink = viewModel.ink,
                 title = title,
                 onStrokeFinished = viewModel::onStrokeFinished,
                 onUndo = viewModel::undo,
@@ -89,13 +88,13 @@ fun ReaderScreen(uri: Uri, title: String, onBack: () -> Unit) {
 @Composable
 private fun Reader(
     state: ReaderState.Ready,
-    ink: DocumentInk,
     title: String,
     onStrokeFinished: (page: Int, stroke: Stroke) -> Unit,
     onUndo: () -> Unit,
     onBack: () -> Unit,
 ) {
     val document = state.document
+    val ink = state.ink
     val pagerState = rememberPagerState { document.pageCount }
     var chromeVisible by rememberSaveable { mutableStateOf(true) }
     val scope = rememberCoroutineScope()

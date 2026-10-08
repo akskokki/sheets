@@ -17,7 +17,12 @@ import kotlinx.coroutines.launch
 sealed interface ReaderState {
     data object Loading : ReaderState
     data object Failed : ReaderState
-    class Ready(val document: PdfDocument, val pages: PageBitmapCache) : ReaderState
+    class Ready(
+        val document: PdfDocument,
+        val pages: PageBitmapCache,
+        val ink: DocumentInk,
+        val annotationKey: String,
+    ) : ReaderState
 }
 
 class ReaderViewModel(
@@ -27,13 +32,10 @@ class ReaderViewModel(
     var state: ReaderState by mutableStateOf(ReaderState.Loading)
         private set
 
-    val ink = DocumentInk()
-
     init {
         viewModelScope.launch {
             state = try {
-                val document = PdfDocument.open(container.contentResolver, uri)
-                ReaderState.Ready(document, PageBitmapCache(document))
+                open()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -43,11 +45,31 @@ class ReaderViewModel(
         }
     }
 
-    fun onStrokeFinished(page: Int, stroke: Stroke) = ink.add(page, stroke)
+    private suspend fun open(): ReaderState.Ready {
+        val document = PdfDocument.open(container.contentResolver, uri)
+        try {
+            val key = container.annotations.keyOf(uri)
+            val ink = DocumentInk(container.annotations.load(key))
+            return ReaderState.Ready(document, PageBitmapCache(document), ink, key)
+        } catch (e: Exception) {
+            document.close()
+            throw e
+        }
+    }
+
+    fun onStrokeFinished(page: Int, stroke: Stroke) {
+        val ready = state as? ReaderState.Ready ?: return
+        ready.ink.add(page, stroke)
+        save(ready)
+    }
 
     fun undo() {
-        ink.undo()
+        val ready = state as? ReaderState.Ready ?: return
+        if (ready.ink.undo() != null) save(ready)
     }
+
+    private fun save(ready: ReaderState.Ready) =
+        container.annotations.save(ready.annotationKey, ready.ink.toPageStrokes())
 
     override fun onCleared() {
         val ready = state as? ReaderState.Ready ?: return

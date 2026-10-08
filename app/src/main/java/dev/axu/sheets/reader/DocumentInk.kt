@@ -3,6 +3,7 @@ package dev.axu.sheets.reader
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.ink.strokes.Stroke
+import dev.axu.sheets.annotations.PageStrokes
 
 /**
  * The finished ink strokes of one document, per page, in page coordinates (PDF points).
@@ -10,13 +11,15 @@ import androidx.ink.strokes.Stroke
  * Backed by snapshot state so a stroke shows up in the same frame it's added; the wet-to-dry ink
  * handoff relies on that to avoid flicker.
  */
-class DocumentInk {
-    private val pages = mutableStateMapOf<Int, List<Stroke>>()
+class DocumentInk(saved: PageStrokes) {
+    private val pages = mutableStateMapOf<Int, List<Stroke>>().apply { putAll(saved) }
 
     /** Pages of strokes added this session, most recent last. */
     private val history = mutableStateListOf<Int>()
 
     val canUndo: Boolean get() = history.isNotEmpty()
+
+    fun toPageStrokes(): PageStrokes = pages.toMap()
 
     fun strokesOn(page: Int): List<Stroke> = pages[page].orEmpty()
 
