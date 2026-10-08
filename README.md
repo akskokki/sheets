@@ -18,7 +18,8 @@ The two builds are separate apps with separate data. Sheets Dev keeps its folder
 (Compose debug builds aren't representative), so judge performance on release.
 
 ```sh
-./gradlew testDebugUnitTest            # JVM tests (scratch-out recognition, crop detection)
+./gradlew spotlessApply                # format the code (ktlint)
+./gradlew check                        # formatting, lint and PC tests; warnings fail it
 ./gradlew connectedDebugAndroidTest    # tablet tests, run in Sheets Dev; leaves it installed
 ```
 
