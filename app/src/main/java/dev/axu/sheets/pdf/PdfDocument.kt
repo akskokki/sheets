@@ -8,6 +8,7 @@ import android.graphics.RectF
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.ParcelFileDescriptor
+import androidx.core.graphics.createBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -48,7 +49,7 @@ class PdfDocument private constructor(
     suspend fun render(index: Int, width: Int, height: Int, region: RectF? = null): Bitmap = mutex.withLock {
         withContext(Dispatchers.IO) {
             check(!closed) { "Document is closed" }
-            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            val bitmap = createBitmap(width, height)
             bitmap.eraseColor(Color.WHITE)
             renderer.openPage(index).use { page ->
                 val transform = region?.let {

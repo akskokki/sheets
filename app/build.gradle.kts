@@ -38,9 +38,22 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    lint {
+        warningsAsErrors = true
+        // targetSdk follows the tablet's Android version, so behavior changes in newer versions can
+        // be tested before targeting them. Raise both together.
+        disable += "OldTargetApi"
+    }
+
     buildFeatures {
         buildConfig = true
         compose = true
+    }
+}
+
+kotlin {
+    compilerOptions {
+        allWarningsAsErrors = true
     }
 }
 
