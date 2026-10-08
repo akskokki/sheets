@@ -76,11 +76,11 @@ class InkHostLayout(
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
         if (event.isStylus) {
-            palmGuard.onStylusEvent(event)
+            palmGuard.onStylusEvent(event.actionMasked, event.eventTime)
             if (event.actionMasked == MotionEvent.ACTION_DOWN && ignorePalm()) cancelFingerGesture()
             if (handleInk(event)) return true
         } else {
-            if (ignorePalm() && palmGuard.shouldIgnore(event)) return true
+            if (ignorePalm() && palmGuard.shouldIgnore(event.actionMasked, event.eventTime)) return true
             fingerGestureActive = event.actionMasked != MotionEvent.ACTION_UP &&
                 event.actionMasked != MotionEvent.ACTION_CANCEL
         }
@@ -88,7 +88,7 @@ class InkHostLayout(
     }
 
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
-        if (event.isStylus) palmGuard.onStylusEvent(event)
+        if (event.isStylus) palmGuard.onStylusEvent(event.actionMasked, event.eventTime)
         return super.dispatchGenericMotionEvent(event)
     }
 

@@ -14,9 +14,10 @@ internal class PalmGuard {
     private var lastStylusEventTime = Long.MIN_VALUE / 2
     private var ignoringGesture = false
 
-    fun onStylusEvent(event: MotionEvent) {
-        lastStylusEventTime = event.eventTime
-        when (event.actionMasked) {
+    /** Takes a stylus event's masked action and time. */
+    fun onStylusEvent(action: Int, time: Long) {
+        lastStylusEventTime = time
+        when (action) {
             MotionEvent.ACTION_DOWN -> stylusDown = true
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> stylusDown = false
             MotionEvent.ACTION_HOVER_ENTER, MotionEvent.ACTION_HOVER_MOVE -> stylusHovering = true
@@ -24,11 +25,11 @@ internal class PalmGuard {
         }
     }
 
-    /** Whether to drop this finger event (and the rest of its gesture). */
-    fun shouldIgnore(event: MotionEvent): Boolean {
-        if (event.actionMasked == MotionEvent.ACTION_DOWN) ignoringGesture = isStylusActive(event.eventTime)
+    /** Whether to drop a finger event, given its masked action and time (and the rest of its gesture). */
+    fun shouldIgnore(action: Int, time: Long): Boolean {
+        if (action == MotionEvent.ACTION_DOWN) ignoringGesture = isStylusActive(time)
         val ignore = ignoringGesture
-        if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+        if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
             ignoringGesture = false
         }
         return ignore
@@ -45,9 +46,9 @@ internal class PalmGuard {
         return stylusDown || (stylusHovering && sinceStylus < HOVER_TIMEOUT_MS) || sinceStylus < GRACE_MS
     }
 
-    private companion object {
+    companion object {
         /** A palm often lands just as the pen lifts between notes. */
-        const val GRACE_MS = 300L
-        const val HOVER_TIMEOUT_MS = 2_000L
+        internal const val GRACE_MS = 300L
+        internal const val HOVER_TIMEOUT_MS = 2_000L
     }
 }
