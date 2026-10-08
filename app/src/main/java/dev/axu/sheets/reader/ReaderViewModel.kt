@@ -99,7 +99,7 @@ class ReaderViewModel(
     }
 
     private fun save(ready: ReaderState.Ready) =
-        container.annotations.save(ready.documentKey, ready.ink.toPageStrokes())
+        container.annotations.save(ready.documentKey, ready.ink.toAnnotations())
 
     override fun onCleared() {
         val ready = state as? ReaderState.Ready ?: return

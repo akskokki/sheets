@@ -19,11 +19,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -67,6 +69,11 @@ fun LibraryScreen(onOpenSheet: (Sheet) -> Unit) {
             }
         }
 
+        if (viewModel.notesAtRisk) {
+            // Picking the same folder again grants write access to it.
+            NotesAtRiskBanner(onAllow = { pickFolder.launch(viewModel.folder) })
+        }
+
         when (val state = viewModel.state) {
             LibraryState.Loading -> Centered { CircularProgressIndicator() }
             LibraryState.NoFolder -> Centered {
@@ -83,6 +90,26 @@ fun LibraryScreen(onOpenSheet: (Sheet) -> Unit) {
                 } else {
                     SheetList(state.sheets, onOpenSheet)
                 }
+        }
+    }
+}
+
+@Composable
+private fun NotesAtRiskBanner(onAllow: () -> Unit) {
+    Surface(
+        color = MaterialTheme.colorScheme.primaryContainer,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 8.dp),
+    ) {
+        Row(Modifier.padding(start = 20.dp, end = 12.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Your notes are only stored inside the app, so uninstalling it would delete them. " +
+                    "Allow keeping them in your sheet music folder, then pick the same folder.",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(16.dp))
+            Button(onClick = onAllow) { Text("Allow") }
         }
     }
 }

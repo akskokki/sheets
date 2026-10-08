@@ -3,16 +3,21 @@ package dev.axu.sheets.reader
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.ink.strokes.Stroke
-import dev.axu.sheets.annotations.PageStrokes
+import dev.axu.sheets.annotations.Annotations
+import java.util.Collections
+import java.util.IdentityHashMap
 
 /**
  * The finished ink strokes of one document, per page, in page coordinates (PDF points), with an
- * undo/redo history of this session's edits.
+ * undo/redo history.
+ *
+ * The history starts out as every saved stroke in the order it was drawn, so undo can step back
+ * through earlier sessions too; erasing and redo are only remembered for this session.
  *
  * Backed by snapshot state so changes show up in the same frame they're made; the wet-to-dry ink
  * handoff relies on that to avoid flicker.
  */
-class DocumentInk(saved: PageStrokes) {
+class DocumentInk(saved: Annotations) {
     private sealed interface Edit {
         val page: Int
 
@@ -22,14 +27,26 @@ class DocumentInk(saved: PageStrokes) {
         class Erase(override val page: Int, val strokes: List<IndexedValue<Stroke>>) : Edit
     }
 
-    private val pages = mutableStateMapOf<Int, List<Stroke>>().apply { putAll(saved) }
-    private val undoStack = mutableStateListOf<Edit>()
+    private val pages = mutableStateMapOf<Int, List<Stroke>>().apply { putAll(saved.pages) }
+    private val undoStack = mutableStateListOf<Edit>().apply {
+        val pageOf = IdentityHashMap<Stroke, Int>()
+        for ((page, strokes) in saved.pages) for (stroke in strokes) pageOf[stroke] = page
+        for (stroke in saved.drawingOrder) pageOf[stroke]?.let { page -> add(Edit.Add(page, stroke)) }
+    }
     private val redoStack = mutableStateListOf<Edit>()
 
     val canUndo: Boolean get() = undoStack.isNotEmpty()
     val canRedo: Boolean get() = redoStack.isNotEmpty()
 
-    fun toPageStrokes(): PageStrokes = pages.toMap()
+    fun toAnnotations(): Annotations {
+        val present = Collections.newSetFromMap(IdentityHashMap<Stroke, Boolean>())
+        for (strokes in pages.values) present.addAll(strokes)
+        // Strokes still on the pages, in the order their additions happened; anything without a
+        // recorded addition (there shouldn't be any) goes first.
+        val ordered = undoStack.filterIsInstance<Edit.Add>().map { it.stroke }.filter { it in present }
+        val unordered = present - ordered.toSet()
+        return Annotations(pages.toMap(), unordered.toList() + ordered)
+    }
 
     fun strokesOn(page: Int): List<Stroke> = pages[page].orEmpty()
 

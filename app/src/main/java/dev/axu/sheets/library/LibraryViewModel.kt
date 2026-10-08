@@ -22,13 +22,22 @@ class LibraryViewModel(private val library: LibraryRepository) : ViewModel() {
     var state: LibraryState by mutableStateOf(LibraryState.Loading)
         private set
 
+    /** Whether notes are only kept in app storage, so uninstalling would lose them. */
+    var notesAtRisk by mutableStateOf(false)
+        private set
+
     private var refreshJob: Job? = null
 
     init {
         viewModelScope.launch {
             library.folder.collect { refresh() }
         }
+        viewModelScope.launch {
+            library.notesFolder.collect { notesAtRisk = library.folder.value != null && it == null }
+        }
     }
+
+    val folder: Uri? get() = library.folder.value
 
     fun onFolderPicked(uri: Uri) = library.setFolder(uri)
 

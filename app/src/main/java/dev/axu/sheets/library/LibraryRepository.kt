@@ -23,14 +23,35 @@ class LibraryRepository(context: Context) {
     private val _folder = MutableStateFlow(restoreFolder())
     val folder: StateFlow<Uri?> = _folder.asStateFlow()
 
+    private val _notesFolder = MutableStateFlow(_folder.value?.takeIf(::isWritable))
+
+    /** [folder] if the app may also keep its notes there, otherwise null. */
+    val notesFolder: StateFlow<Uri?> = _notesFolder.asStateFlow()
+
     fun setFolder(uri: Uri) {
         val previous = _folder.value
-        resolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        if (previous != null && previous != uri) {
-            resolver.releasePersistableUriPermission(previous, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        val writable = try {
+            resolver.takePersistableUriPermission(uri, READ_WRITE)
+            true
+        } catch (_: SecurityException) {
+            // Some providers only grant read access; notes then stay in app storage only.
+            resolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            false
         }
+        if (previous != null && previous != uri) release(previous)
         prefs.edit { putString(KEY_FOLDER, uri.toString()) }
         _folder.value = uri
+        _notesFolder.value = uri.takeIf { writable }
+    }
+
+    private fun isWritable(uri: Uri) =
+        resolver.persistedUriPermissions.any { it.uri == uri && it.isWritePermission }
+
+    private fun release(uri: Uri) {
+        val permission = resolver.persistedUriPermissions.firstOrNull { it.uri == uri } ?: return
+        val flags = (if (permission.isReadPermission) Intent.FLAG_GRANT_READ_URI_PERMISSION else 0) or
+            (if (permission.isWritePermission) Intent.FLAG_GRANT_WRITE_URI_PERMISSION else 0)
+        resolver.releasePersistableUriPermission(uri, flags)
     }
 
     /** All PDFs in [folder] and its subfolders, sorted by title. */
@@ -53,7 +74,7 @@ class LibraryRepository(context: Context) {
                 val name = cursor.getString(1) ?: continue
                 val mime = cursor.getString(2)
                 when {
-                    mime == Document.MIME_TYPE_DIR -> collectPdfs(tree, id, into)
+                    mime == Document.MIME_TYPE_DIR -> if (!name.startsWith(".")) collectPdfs(tree, id, into)
                     mime == "application/pdf" || name.endsWith(".pdf", ignoreCase = true) ->
                         into += Sheet(DocumentsContract.buildDocumentUriUsingTree(tree, id), titleOf(name))
                 }
@@ -70,6 +91,7 @@ class LibraryRepository(context: Context) {
 
     private companion object {
         const val KEY_FOLDER = "folder"
+        const val READ_WRITE = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
     }
 }
 

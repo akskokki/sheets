@@ -3,6 +3,7 @@ package dev.axu.sheets
 import android.app.Application
 import android.content.Context
 import dev.axu.sheets.annotations.AnnotationStore
+import dev.axu.sheets.annotations.LocalAnnotationFiles
 import dev.axu.sheets.library.LibraryRepository
 import dev.axu.sheets.reader.ReadingPositions
 import kotlinx.coroutines.CoroutineScope
@@ -27,7 +28,12 @@ class AppContainer(context: Context) {
     val contentResolver = context.contentResolver
     val library = LibraryRepository(context)
     val positions = ReadingPositions(context)
-    val annotations = AnnotationStore(contentResolver, File(context.filesDir, "annotations"), appScope)
+    val annotations = AnnotationStore(
+        contentResolver,
+        local = LocalAnnotationFiles(File(context.filesDir, "annotations")),
+        notesFolder = library.notesFolder,
+        scope = appScope,
+    )
 }
 
 val Context.appContainer: AppContainer
