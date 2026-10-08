@@ -44,13 +44,14 @@ class ScratchGestureTest {
     fun zigzagInPlace() {
         val path = Path().lineTo(0f, 0f)
         repeat(3) { path.lineTo(20f, 1f).lineTo(0f, 2f) }
+        path.lineTo(20f, 3f)
         assertTrue(path.matches())
     }
 
     @Test
     fun fastZigzagSampledOnlyAtTheTurns() {
-        val xs = floatArrayOf(0f, 20f, 0f, 20f, 0f, 20f, 0f)
-        val ys = floatArrayOf(0f, 1f, 2f, 3f, 4f, 5f, 6f)
+        val xs = floatArrayOf(0f, 20f, 0f, 20f, 0f, 20f, 0f, 20f)
+        val ys = floatArrayOf(0f, 1f, 2f, 3f, 4f, 5f, 6f, 7f)
         assertTrue(ScratchGesture.matches(xs, ys))
     }
 
@@ -73,10 +74,9 @@ class ScratchGestureTest {
     }
 
     @Test
-    fun fourTurnsAreNotEnough() {
+    fun fiveTurnsAreNotEnough() {
         val path = Path().lineTo(0f, 0f)
-        repeat(2) { path.lineTo(20f, 1f).lineTo(0f, 2f) }
-        path.lineTo(20f, 3f)
+        repeat(3) { path.lineTo(20f, 1f).lineTo(0f, 2f) }
         assertFalse(path.matches())
     }
 
