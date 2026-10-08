@@ -29,8 +29,9 @@ annotations.
   screen in a horizontal pager, and reopen where you left off. Tap the left/right third to turn
   pages, the middle to toggle the toolbar (a top bar, or a side rail when the page leaves room).
   Pinch to zoom; the visible part is re-rendered sharply once the pinch settles.
-  Blank margins are cropped away (`PageCrops`): each page's printed area is found once per document
-  by scanning low-resolution renders. Notes outside the crop widen it, so they're never hidden.
+  Blank side margins are cropped away (`PageCrops`): each page's printed area is found once per
+  document by scanning low-resolution renders. Notes beside the crop widen it, so they're never
+  hidden.
 - **Editing**: scribble back and forth over ink to erase it (`ScratchOut`, which ignores trills,
   hairpins, circles and scribbles over nothing). Two-finger tap undoes, three-finger tap redoes.
 - **Ink** (`ink/`): `InkHostLayout` wraps the whole UI at the View level. Pen input that starts on a

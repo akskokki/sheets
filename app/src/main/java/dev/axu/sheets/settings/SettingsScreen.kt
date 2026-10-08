@@ -75,8 +75,8 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             Section("Reading")
             Toggle(
-                "Crop margins",
-                "Trim the blank space around the music so it fills more of the screen. " +
+                "Crop side margins",
+                "Trim the blank space beside the music so it fills more of the screen. " +
                     "Takes effect the next time you open a sheet.",
                 settings.cropMargins,
             ) { settings.cropMargins = it }
