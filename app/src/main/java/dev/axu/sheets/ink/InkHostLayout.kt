@@ -3,6 +3,7 @@ package dev.axu.sheets.ink
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Matrix
+import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
@@ -35,8 +36,9 @@ val LocalInkHost = staticCompositionLocalOf<InkHostLayout> { error("No InkHostLa
  * Stylus input that starts over an [InkTarget] never reaches the content; it's drawn as wet ink by
  * a front-buffered [InProgressStrokesView] layered above the content (lowest possible latency), then
  * handed to the target when finished. All other input, including the stylus outside of targets,
- * goes to the content as usual. Doing this at the View level keeps the routing in one place instead
- * of every composable having to ignore the stylus.
+ * goes to the content as usual, except finger touches [PalmGuard] attributes to the writing hand.
+ * Doing this at the View level keeps the routing in one place instead of every composable having to
+ * tell pens, fingers and palms apart.
  */
 @SuppressLint("ViewConstructor")
 class InkHostLayout(context: Context, content: View) : FrameLayout(context) {
@@ -46,6 +48,8 @@ class InkHostLayout(context: Context, content: View) : FrameLayout(context) {
     private val predictor = MotionEventPredictor.newInstance(this)
     private val targets = mutableMapOf<InProgressStrokeId, InkTarget>()
     private var activeStroke: InProgressStrokeId? = null
+    private val palmGuard = PalmGuard()
+    private var fingerGestureActive = false
 
     init {
         addView(content, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
@@ -63,8 +67,32 @@ class InkHostLayout(context: Context, content: View) : FrameLayout(context) {
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
-        if (event.isStylus && handleInk(event)) return true
+        if (event.isStylus) {
+            palmGuard.onStylusEvent(event)
+            if (event.actionMasked == MotionEvent.ACTION_DOWN) cancelFingerGesture()
+            if (handleInk(event)) return true
+        } else {
+            if (palmGuard.shouldIgnore(event)) return true
+            fingerGestureActive = event.actionMasked != MotionEvent.ACTION_UP &&
+                event.actionMasked != MotionEvent.ACTION_CANCEL
+        }
         return super.dispatchTouchEvent(event)
+    }
+
+    override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
+        if (event.isStylus) palmGuard.onStylusEvent(event)
+        return super.dispatchGenericMotionEvent(event)
+    }
+
+    /** When the pen comes down, whatever the fingers were doing was most likely the palm. */
+    private fun cancelFingerGesture() {
+        if (!fingerGestureActive) return
+        val now = SystemClock.uptimeMillis()
+        val cancel = MotionEvent.obtain(now, now, MotionEvent.ACTION_CANCEL, 0f, 0f, 0)
+        super.dispatchTouchEvent(cancel)
+        cancel.recycle()
+        fingerGestureActive = false
+        palmGuard.ignoreCurrentGesture()
     }
 
     /** Returns whether [event] was consumed as ink. */
