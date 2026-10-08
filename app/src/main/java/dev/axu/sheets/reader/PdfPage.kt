@@ -36,11 +36,13 @@ fun PdfPage(
 ) {
     BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val fitted = fitInside(pageSize, constraints.maxWidth, constraints.maxHeight)
+        // produceState keeps its value when the keys change (e.g. on rotation), so the previous
+        // size's bitmap stays up, stretched to fit, until the new one is ready.
         val bitmap by produceState<ImageBitmap?>(
             initialValue = pages.cached(index, fitted.width, fitted.height)?.asImageBitmap(),
             index, fitted,
         ) {
-            if (value == null) value = pages.get(index, fitted.width, fitted.height).asImageBitmap()
+            value = pages.get(index, fitted.width, fitted.height).asImageBitmap()
         }
         val pageModifier = with(LocalDensity.current) {
             Modifier.size(fitted.width.toDp(), fitted.height.toDp())
@@ -48,7 +50,7 @@ fun PdfPage(
         Box(modifier.then(pageModifier)) {
             Canvas(Modifier.fillMaxSize()) {
                 drawRect(Color.White)
-                bitmap?.let { drawImage(it) }
+                bitmap?.let { drawImage(it, dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt())) }
                 drawOverlay(size.width / pageSize.width)
             }
         }
