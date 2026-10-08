@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import android.provider.DocumentsContract.Document
 import android.util.AtomicFile
+import dev.axu.sheets.BuildConfig
 import java.io.File
 import java.io.FileNotFoundException
 
@@ -141,6 +142,6 @@ class FolderAnnotationFiles(private val resolver: ContentResolver, private val t
     private fun documentUri(id: String) = DocumentsContract.buildDocumentUriUsingTree(tree, id)
 
     companion object {
-        const val DIRECTORY_NAME = ".annotations"
+        const val DIRECTORY_NAME = BuildConfig.NOTES_DIRECTORY
     }
 }

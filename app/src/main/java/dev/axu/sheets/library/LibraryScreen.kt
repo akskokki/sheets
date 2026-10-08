@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -60,7 +61,7 @@ fun LibraryScreen(onOpenSheet: (Sheet) -> Unit, onOpenSettings: () -> Unit) {
             Modifier.fillMaxWidth().padding(start = 32.dp, end = 16.dp, top = 24.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Sheets", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineLarge, modifier = Modifier.weight(1f))
             if (viewModel.state != LibraryState.NoFolder) {
                 TextButton(onClick = { pickFolder.launch(null) }) {
                     Icon(painterResource(R.drawable.ic_folder), contentDescription = null, Modifier.size(18.dp))

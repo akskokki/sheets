@@ -9,16 +9,17 @@ Uses the JDK and Android SDK that ship with Android Studio. From Git Bash:
 
 ```sh
 source env.sh                 # puts java and adb on PATH for this shell
-./gradlew installRelease      # minified build signed with the debug key, best for real use
-./gradlew installDebug        # debuggable build (slower; Compose debug builds aren't representative)
+./gradlew installRelease      # "Sheets": the minified build for real use
+./gradlew installDebug        # "Sheets Dev": a separate app for development
 ```
 
-Debug and release share a signing key, so either can be installed over the other without losing
-annotations.
+The two builds are separate apps with separate data. Sheets Dev keeps its folder copy of notes in
+`.annotations-dev`, so development never touches the notes made in Sheets. Debug builds are slower
+(Compose debug builds aren't representative), so judge performance on release.
 
 ```sh
-./gradlew testDebugUnitTest            # JVM tests (scratch-out recognition)
-./gradlew connectedDebugAndroidTest    # gesture tests on the tablet; leaves the app installed
+./gradlew testDebugUnitTest            # JVM tests (scratch-out recognition, crop detection)
+./gradlew connectedDebugAndroidTest    # tablet tests, run in Sheets Dev; leaves it installed
 ```
 
 ## How it works

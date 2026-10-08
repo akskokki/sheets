@@ -15,9 +15,16 @@ android {
         versionCode = 2
         versionName = "0.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Hidden folder for the copy of notes kept in the sheet music folder.
+        buildConfigField("String", "NOTES_DIRECTORY", "\".annotations\"")
     }
 
     buildTypes {
+        // A separate app ("Sheets Dev") with its own data, so development never touches real notes.
+        debug {
+            applicationIdSuffix = ".debug"
+            buildConfigField("String", "NOTES_DIRECTORY", "\".annotations-dev\"")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -32,6 +39,7 @@ android {
     }
 
     buildFeatures {
+        buildConfig = true
         compose = true
     }
 }
