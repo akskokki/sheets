@@ -78,14 +78,16 @@ class ReaderViewModel(
         erasures -= erasure
     }
 
-    fun undo() {
-        val ready = state as? ReaderState.Ready ?: return
-        if (ready.ink.undo()) save(ready)
+    /** Returns the page of the undone edit, or null if there was nothing to undo. */
+    fun undo(): Int? {
+        val ready = state as? ReaderState.Ready ?: return null
+        return ready.ink.undo()?.also { save(ready) }
     }
 
-    fun redo() {
-        val ready = state as? ReaderState.Ready ?: return
-        if (ready.ink.redo()) save(ready)
+    /** Returns the page of the redone edit, or null if there was nothing to redo. */
+    fun redo(): Int? {
+        val ready = state as? ReaderState.Ready ?: return null
+        return ready.ink.redo()?.also { save(ready) }
     }
 
     private fun save(ready: ReaderState.Ready) =

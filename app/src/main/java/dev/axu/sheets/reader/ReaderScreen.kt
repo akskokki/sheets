@@ -1,45 +1,34 @@
 package dev.axu.sheets.reader
 
 import android.net.Uri
-import androidx.compose.animation.core.tween
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.key
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.ink.rendering.android.canvas.CanvasStrokeRenderer
-import androidx.ink.strokes.Stroke
-import dev.axu.sheets.ink.LocalInkHost
-import dev.axu.sheets.ink.Pens
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -47,18 +36,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.ink.rendering.android.canvas.CanvasStrokeRenderer
 import androidx.lifecycle.viewmodel.compose.viewModel
-import dev.axu.sheets.R
 import dev.axu.sheets.appContainer
+import dev.axu.sheets.ink.LocalInkHost
+import dev.axu.sheets.ink.Pens
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private val Backdrop = Color(0xFFE6E6EA)
 private val ToolbarKey = Any()
 private const val ERASE_FADE_MILLIS = 180
+private const val MESSAGE_MILLIS = 900L
 
 @Composable
 fun ReaderScreen(uri: Uri, title: String, onBack: () -> Unit) {
@@ -75,57 +67,44 @@ fun ReaderScreen(uri: Uri, title: String, onBack: () -> Unit) {
                 Text("Couldn't open $title", style = MaterialTheme.typography.bodyLarge)
                 TextButton(onClick = onBack) { Text("Back") }
             }
-            is ReaderState.Ready -> Reader(
-                state = state,
-                title = title,
-                erasures = viewModel.erasures,
-                onStrokeFinished = viewModel::onStrokeFinished,
-                onErasureFaded = viewModel::onErasureFaded,
-                onUndo = viewModel::undo,
-                onRedo = viewModel::redo,
-                onBack = onBack,
-            )
+            is ReaderState.Ready -> Reader(state, viewModel, title, onBack)
         }
     }
 }
 
 @Composable
-private fun Reader(
-    state: ReaderState.Ready,
-    title: String,
-    erasures: List<Erasure>,
-    onStrokeFinished: (page: Int, stroke: Stroke) -> Unit,
-    onErasureFaded: (Erasure) -> Unit,
-    onUndo: () -> Unit,
-    onRedo: () -> Unit,
-    onBack: () -> Unit,
-) {
+private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: String, onBack: () -> Unit) {
     val document = state.document
     val ink = state.ink
     val pagerState = rememberPagerState { document.pageCount }
     var chromeVisible by rememberSaveable { mutableStateOf(true) }
+    var message by remember { mutableStateOf<Message?>(null) }
     val scope = rememberCoroutineScope()
     val strokeRenderer = remember { CanvasStrokeRenderer.create() }
 
-    val currentOnStrokeFinished by rememberUpdatedState(onStrokeFinished)
     val inkTargets = remember(document) {
-        PageInkTargets(document.pageSizes, brush = { Pens.Default }) { page, stroke ->
-            currentOnStrokeFinished(page, stroke)
-        }
+        PageInkTargets(document.pageSizes, brush = { Pens.Default }, onStrokeFinished = viewModel::onStrokeFinished)
     }
-    for (erasure in erasures) {
-        key(erasure) {
-            LaunchedEffect(Unit) {
-                erasure.alpha.animateTo(0f, tween(ERASE_FADE_MILLIS))
-                onErasureFaded(erasure)
-            }
-        }
-    }
-
     val inkHost = LocalInkHost.current
     DisposableEffect(inkHost, inkTargets) {
         inkHost.targetResolver = inkTargets
         onDispose { if (inkHost.targetResolver === inkTargets) inkHost.targetResolver = null }
+    }
+
+    for (erasure in viewModel.erasures) {
+        key(erasure) {
+            LaunchedEffect(Unit) {
+                erasure.alpha.animateTo(0f, tween(ERASE_FADE_MILLIS))
+                viewModel.onErasureFaded(erasure)
+            }
+        }
+    }
+
+    /** Undo or redo, bringing the affected page into view so the change is never invisible. */
+    fun edit(name: String, action: () -> Int?) {
+        val page = action()
+        message = Message(if (page == null) "Nothing to ${name.lowercase()}" else name)
+        if (page != null && page != pagerState.currentPage) scope.launch { pagerState.animateScrollToPage(page) }
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -136,15 +115,23 @@ private fun Reader(
             modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(pagerState) {
-                    // Sheet-music style tap zones: edges turn pages, the middle toggles the toolbar.
-                    detectTapGestures { offset ->
-                        val third = size.width / 3f
-                        when {
-                            offset.x < third -> scope.launch { pagerState.turnPage(-1) }
-                            offset.x > 2 * third -> scope.launch { pagerState.turnPage(+1) }
-                            else -> chromeVisible = !chromeVisible
-                        }
-                    }
+                    detectTaps(
+                        // Sheet-music style tap zones: edges turn pages, the middle toggles the toolbar.
+                        onTap = { offset ->
+                            val third = size.width / 3f
+                            when {
+                                offset.x < third -> scope.launch { pagerState.turnPage(-1) }
+                                offset.x > 2 * third -> scope.launch { pagerState.turnPage(+1) }
+                                else -> chromeVisible = !chromeVisible
+                            }
+                        },
+                        onMultiFingerTap = { fingers ->
+                            when (fingers) {
+                                2 -> edit("Undo", viewModel::undo)
+                                3 -> edit("Redo", viewModel::redo)
+                            }
+                        },
+                    )
                 },
         ) { index ->
             DisposableEffect(index) { onDispose { inkTargets.onPageRemoved(index) } }
@@ -155,8 +142,10 @@ private fun Reader(
                 modifier = Modifier.onGloballyPositioned { inkTargets.onPagePositioned(index, it) },
             ) { pageToPx ->
                 drawStrokes(ink.strokesOn(index), pageToPx, strokeRenderer)
-                for (erasure in erasures) {
-                    if (erasure.page == index) drawStrokes(erasure.strokes, pageToPx, strokeRenderer, erasure.alpha.value)
+                for (erasure in viewModel.erasures) {
+                    if (erasure.page == index) {
+                        drawStrokes(erasure.strokes, pageToPx, strokeRenderer, erasure.alpha.value)
+                    }
                 }
             }
         }
@@ -169,51 +158,41 @@ private fun Reader(
                 pageCount = document.pageCount,
                 canUndo = ink.canUndo,
                 canRedo = ink.canRedo,
-                onUndo = onUndo,
-                onRedo = onRedo,
+                onUndo = { edit("Undo", viewModel::undo) },
+                onRedo = { edit("Redo", viewModel::redo) },
                 onBack = onBack,
                 modifier = Modifier.onGloballyPositioned { inkTargets.onExclusionPositioned(ToolbarKey, it) },
             )
         }
+
+        TransientMessage(message, onDismiss = { message = null }, Modifier.align(Alignment.BottomCenter))
     }
 }
 
+/** Identity matters: showing the same text again restarts the timeout. */
+private class Message(val text: String)
+
+/** A brief confirmation, e.g. for edits made by gesture while the toolbar is hidden. */
 @Composable
-private fun ReaderToolbar(
-    title: String,
-    page: Int,
-    pageCount: Int,
-    canUndo: Boolean,
-    canRedo: Boolean,
-    onUndo: () -> Unit,
-    onRedo: () -> Unit,
-    onBack: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Surface(color = Color.White.copy(alpha = 0.94f), shadowElevation = 2.dp, modifier = modifier.fillMaxWidth()) {
-        Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) {
-                Icon(painterResource(R.drawable.ic_back), contentDescription = "Back")
-            }
-            Text(
-                title,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
-            )
-            IconButton(onClick = onUndo, enabled = canUndo) {
-                Icon(painterResource(R.drawable.ic_undo), contentDescription = "Undo")
-            }
-            IconButton(onClick = onRedo, enabled = canRedo) {
-                Icon(painterResource(R.drawable.ic_redo), contentDescription = "Redo")
-            }
-            Text(
-                "$page / $pageCount",
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.padding(start = 8.dp, end = 16.dp),
-            )
+private fun TransientMessage(message: Message?, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+    // Keep showing the last text while fading out.
+    var shown by remember { mutableStateOf("") }
+    if (message != null) shown = message.text
+    LaunchedEffect(message) {
+        if (message != null) {
+            delay(MESSAGE_MILLIS)
+            onDismiss()
         }
+    }
+    AnimatedVisibility(message != null, modifier.padding(bottom = 48.dp), enter = fadeIn(), exit = fadeOut()) {
+        Text(
+            shown,
+            color = Color.White,
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier
+                .background(Color(0xCC1F2937), RoundedCornerShape(50))
+                .padding(horizontal = 20.dp, vertical = 10.dp),
+        )
     }
 }
 

@@ -41,20 +41,20 @@ class DocumentInk(saved: PageStrokes) {
         if (indexed.isNotEmpty()) perform(Edit.Erase(page, indexed))
     }
 
-    /** Reverts the most recent edit; returns false if there was nothing to undo. */
-    fun undo(): Boolean {
-        val edit = undoStack.removeLastOrNull() ?: return false
+    /** Reverts the most recent edit; returns the page it was on, or null if there was nothing to undo. */
+    fun undo(): Int? {
+        val edit = undoStack.removeLastOrNull() ?: return null
         revert(edit)
         redoStack += edit
-        return true
+        return edit.page
     }
 
-    /** Reapplies the most recently undone edit; returns false if there was nothing to redo. */
-    fun redo(): Boolean {
-        val edit = redoStack.removeLastOrNull() ?: return false
+    /** Reapplies the most recently undone edit; returns its page, or null if there was nothing to redo. */
+    fun redo(): Int? {
+        val edit = redoStack.removeLastOrNull() ?: return null
         apply(edit)
         undoStack += edit
-        return true
+        return edit.page
     }
 
     private fun perform(edit: Edit) {
