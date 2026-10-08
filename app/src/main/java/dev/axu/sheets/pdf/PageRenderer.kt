@@ -20,9 +20,8 @@ class PageRenderer(private val document: PdfDocument) {
     fun cached(index: Int, region: RectF, width: Int, height: Int): Bitmap? = cache[Key(index, region, width, height)]
 
     /** [region] of page [index] as shown when not zoomed in, scaled to [width] x [height] pixels. */
-    suspend fun page(index: Int, region: RectF, width: Int, height: Int): Bitmap =
-        cached(index, region, width, height)
-            ?: document.render(index, width, height, region).also { cache.put(Key(index, region, width, height), it) }
+    suspend fun page(index: Int, region: RectF, width: Int, height: Int): Bitmap = cached(index, region, width, height)
+        ?: document.render(index, width, height, region).also { cache.put(Key(index, region, width, height), it) }
 
     /** [region] of page [index] scaled to [width] x [height] pixels, for zoomed in detail. */
     suspend fun detail(index: Int, region: RectF, width: Int, height: Int): Bitmap =

@@ -21,8 +21,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-@RunWith(AndroidJUnit4::class)
 /** The reader's own gesture detectors, stacked the way the reader uses them. */
+@RunWith(AndroidJUnit4::class)
 class ReaderGesturesTest {
     @get:Rule
     val rule = createComposeRule()
@@ -89,7 +89,12 @@ class ReaderGesturesTest {
     @Test
     fun twoFingerPinchIsNotATap() {
         rule.onNodeWithTag("area").performTouchInput {
-            pinch(center - Offset(50f, 0f), center - Offset(200f, 0f), center + Offset(50f, 0f), center + Offset(200f, 0f))
+            pinch(
+                center - Offset(50f, 0f),
+                center - Offset(200f, 0f),
+                center + Offset(50f, 0f),
+                center + Offset(200f, 0f),
+            )
         }
         rule.runOnIdle { assertEquals(emptyList<String>(), taps) }
     }
@@ -107,7 +112,12 @@ class ReaderGesturesTest {
     @Test
     fun pinchZoomsAroundFingers() {
         rule.onNodeWithTag("area").performTouchInput {
-            pinch(center - Offset(50f, 0f), center - Offset(250f, 0f), center + Offset(50f, 0f), center + Offset(250f, 0f))
+            pinch(
+                center - Offset(50f, 0f),
+                center - Offset(250f, 0f),
+                center + Offset(50f, 0f),
+                center + Offset(250f, 0f),
+            )
         }
         rule.runOnIdle {
             assertTrue("scale ${zoom.scale}", zoom.scale > 1f)
@@ -118,7 +128,12 @@ class ReaderGesturesTest {
     @Test
     fun pinchingOutBeyondFitStaysAtFit() {
         rule.onNodeWithTag("area").performTouchInput {
-            pinch(center - Offset(250f, 0f), center - Offset(50f, 0f), center + Offset(250f, 0f), center + Offset(50f, 0f))
+            pinch(
+                center - Offset(250f, 0f),
+                center - Offset(50f, 0f),
+                center + Offset(250f, 0f),
+                center + Offset(50f, 0f),
+            )
         }
         rule.runOnIdle { assertEquals(1f, zoom.scale) }
     }
@@ -129,7 +144,12 @@ class ReaderGesturesTest {
         rule.runOnIdle { assertEquals(Offset.Zero, zoom.offset) }
 
         rule.onNodeWithTag("area").performTouchInput {
-            pinch(center - Offset(50f, 0f), center - Offset(250f, 0f), center + Offset(50f, 0f), center + Offset(250f, 0f))
+            pinch(
+                center - Offset(50f, 0f),
+                center - Offset(250f, 0f),
+                center + Offset(50f, 0f),
+                center + Offset(250f, 0f),
+            )
         }
         val zoomedOffset = rule.runOnIdle { zoom.offset }
         rule.onNodeWithTag("area").performTouchInput { swipeLeft() }

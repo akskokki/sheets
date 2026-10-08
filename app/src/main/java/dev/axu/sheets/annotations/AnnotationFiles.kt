@@ -23,12 +23,11 @@ private const val EXTENSION = ".ink"
 
 /** Files in app-private storage: always available, but deleted when the app is uninstalled. */
 class LocalAnnotationFiles(private val directory: File) : AnnotationFiles {
-    override fun read(key: String): ByteArray? =
-        try {
-            file(key).readFully()
-        } catch (_: FileNotFoundException) {
-            null
-        }
+    override fun read(key: String): ByteArray? = try {
+        file(key).readFully()
+    } catch (_: FileNotFoundException) {
+        null
+    }
 
     override fun write(key: String, bytes: ByteArray) {
         directory.mkdirs()

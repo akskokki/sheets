@@ -84,6 +84,7 @@ class DocumentInk(saved: Annotations) {
         val strokes = strokesOn(edit.page)
         pages[edit.page] = when (edit) {
             is Edit.Add -> strokes + edit.stroke
+
             is Edit.Erase -> {
                 val erased = edit.strokes.mapTo(HashSet()) { it.value }
                 strokes.filterNot { it in erased }
@@ -95,6 +96,7 @@ class DocumentInk(saved: Annotations) {
         val strokes = strokesOn(edit.page)
         pages[edit.page] = when (edit) {
             is Edit.Add -> strokes - edit.stroke
+
             // Ascending order makes each original index valid again by the time it's inserted.
             is Edit.Erase -> strokes.toMutableList().apply {
                 for ((index, stroke) in edit.strokes) add(index.coerceAtMost(size), stroke)

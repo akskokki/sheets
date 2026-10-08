@@ -15,30 +15,28 @@ internal const val TAP_TIMEOUT_MILLIS = 400L
  * Detects quick, still taps with any number of fingers. Anything that moves or lingers is left to
  * other gestures, such as swiping pages.
  */
-suspend fun PointerInputScope.detectTaps(
-    onTap: (Offset) -> Unit,
-    onMultiFingerTap: (fingers: Int) -> Unit,
-) = awaitEachGesture {
-    val first = awaitFirstDown(requireUnconsumed = false)
-    val downPositions = mutableMapOf<PointerId, Offset>(first.id to first.position)
-    var fingers = 1
-    var isTap = true
+suspend fun PointerInputScope.detectTaps(onTap: (Offset) -> Unit, onMultiFingerTap: (fingers: Int) -> Unit) =
+    awaitEachGesture {
+        val first = awaitFirstDown(requireUnconsumed = false)
+        val downPositions = mutableMapOf<PointerId, Offset>(first.id to first.position)
+        var fingers = 1
+        var isTap = true
 
-    while (true) {
-        val event = awaitPointerEvent()
-        for (change in event.changes) {
-            if (change.changedToDownIgnoreConsumed()) downPositions[change.id] = change.position
-            val down = downPositions[change.id] ?: continue
-            if (change.isConsumed || (change.position - down).getDistance() > viewConfiguration.touchSlop) {
-                isTap = false
+        while (true) {
+            val event = awaitPointerEvent()
+            for (change in event.changes) {
+                if (change.changedToDownIgnoreConsumed()) downPositions[change.id] = change.position
+                val down = downPositions[change.id] ?: continue
+                if (change.isConsumed || (change.position - down).getDistance() > viewConfiguration.touchSlop) {
+                    isTap = false
+                }
+                if (change.uptimeMillis - first.uptimeMillis > TAP_TIMEOUT_MILLIS) isTap = false
             }
-            if (change.uptimeMillis - first.uptimeMillis > TAP_TIMEOUT_MILLIS) isTap = false
+            fingers = max(fingers, event.changes.count { it.pressed })
+            if (event.changes.none { it.pressed }) break
         }
-        fingers = max(fingers, event.changes.count { it.pressed })
-        if (event.changes.none { it.pressed }) break
-    }
 
-    if (isTap) {
-        if (fingers == 1) onTap(first.position) else onMultiFingerTap(fingers)
+        if (isTap) {
+            if (fingers == 1) onTap(first.position) else onMultiFingerTap(fingers)
+        }
     }
-}

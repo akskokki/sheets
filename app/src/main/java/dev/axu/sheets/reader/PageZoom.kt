@@ -75,7 +75,8 @@ suspend fun PointerInputScope.detectZoom(zoom: PageZoom) = awaitEachGesture {
             accumulatedZoom *= zoomChange
             accumulatedPan += pan
             val pinched = abs(1 - accumulatedZoom) * event.calculateCentroidSize(useCurrent = false)
-            pastSlop = ours && (pinched > viewConfiguration.touchSlop || accumulatedPan.getDistance() > viewConfiguration.touchSlop)
+            val slop = viewConfiguration.touchSlop
+            pastSlop = ours && (pinched > slop || accumulatedPan.getDistance() > slop)
         }
         // No centroid when none of the pointers were down before this event.
         val centroid = event.calculateCentroid(useCurrent = false)

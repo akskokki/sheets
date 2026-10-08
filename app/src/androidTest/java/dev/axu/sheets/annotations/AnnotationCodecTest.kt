@@ -27,7 +27,12 @@ class AnnotationCodecTest {
         assertEquals(2, decoded.pages.getValue(0).size)
         val (decodedA, decodedB) = decoded.pages.getValue(0)
         val decodedC = decoded.pages.getValue(1).single()
-        assertEquals(listOf(decodedC, decodedA, decodedB).map { System.identityHashCode(it) }, decoded.drawingOrder.map { System.identityHashCode(it) })
+        assertEquals(
+            listOf(decodedC, decodedA, decodedB).map {
+                System.identityHashCode(it)
+            },
+            decoded.drawingOrder.map { System.identityHashCode(it) },
+        )
         assertSame(decodedA, decoded.drawingOrder[1])
         assertEquals(a.inputs.size, decodedA.inputs.size)
         assertEquals(a.brush, decodedA.brush)

@@ -61,7 +61,11 @@ fun LibraryScreen(onOpenSheet: (Sheet) -> Unit, onOpenSettings: () -> Unit) {
             Modifier.fillMaxWidth().padding(start = 32.dp, end = 16.dp, top = 24.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineLarge, modifier = Modifier.weight(1f))
+            Text(
+                stringResource(R.string.app_name),
+                style = MaterialTheme.typography.headlineLarge,
+                modifier = Modifier.weight(1f),
+            )
             if (viewModel.state != LibraryState.NoFolder) {
                 TextButton(onClick = { pickFolder.launch(null) }) {
                     Icon(painterResource(R.drawable.ic_folder), contentDescription = null, Modifier.size(18.dp))
@@ -81,14 +85,17 @@ fun LibraryScreen(onOpenSheet: (Sheet) -> Unit, onOpenSettings: () -> Unit) {
 
         when (val state = viewModel.state) {
             LibraryState.Loading -> Centered { CircularProgressIndicator() }
+
             LibraryState.NoFolder -> Centered {
                 Message("Choose the folder where your sheet music PDFs live.")
                 Button(onClick = { pickFolder.launch(null) }) { Text("Choose folder") }
             }
+
             LibraryState.Unavailable -> Centered {
                 Message("The sheet music folder can't be opened anymore.")
                 Button(onClick = { pickFolder.launch(null) }) { Text("Choose folder") }
             }
+
             is LibraryState.Loaded ->
                 if (state.sheets.isEmpty()) {
                     Centered { Message("No PDFs in this folder yet.") }
@@ -106,7 +113,10 @@ private fun NotesAtRiskBanner(onAllow: () -> Unit) {
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 8.dp),
     ) {
-        Row(Modifier.padding(start = 20.dp, end = 12.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.padding(start = 20.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
                 "Your notes are only stored inside the app, so uninstalling it would delete them. " +
                     "Allow keeping them in your sheet music folder, then pick the same folder.",

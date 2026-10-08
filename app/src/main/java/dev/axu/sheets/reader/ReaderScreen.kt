@@ -86,10 +86,12 @@ fun ReaderScreen(uri: Uri, title: String, onBack: () -> Unit) {
     ) {
         when (val state = viewModel.state) {
             ReaderState.Loading -> CircularProgressIndicator()
+
             ReaderState.Failed -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Couldn't open $title", style = MaterialTheme.typography.bodyLarge)
                 TextButton(onClick = onBack) { Text("Back") }
             }
+
             is ReaderState.Ready -> Reader(state, viewModel, title, onBack)
         }
     }
@@ -163,9 +165,11 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
                             }
                         },
                         onMultiFingerTap = { fingers ->
-                            if (settings.multiFingerTapUndo) when (fingers) {
-                                2 -> edit("Undo", viewModel::undo)
-                                3 -> edit("Redo", viewModel::redo)
+                            if (settings.multiFingerTapUndo) {
+                                when (fingers) {
+                                    2 -> edit("Undo", viewModel::undo)
+                                    3 -> edit("Redo", viewModel::redo)
+                                }
                             }
                         },
                     )
@@ -205,7 +209,10 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
         // Prefer the margin beside the pages (landscape), so the toolbar never covers the music.
         // Pages are cropped differently, so go by the widest to keep the toolbar put while paging.
         val widestPage = remember(state.crops, constraints) {
-            state.crops.maxOf { it.width() * it.size.scaleToFit(constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat()) }
+            state.crops.maxOf {
+                it.width() *
+                    it.size.scaleToFit(constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat())
+            }
         }
         val useRail = (maxWidth - with(LocalDensity.current) { widestPage.toDp() }) / 2 >= ToolbarRailWidth
         val toolbarModifier = Modifier.onGloballyPositioned { inkTargets.onExclusionPositioned(ToolbarKey, it) }

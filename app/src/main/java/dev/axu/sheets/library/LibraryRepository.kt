@@ -44,8 +44,7 @@ class LibraryRepository(context: Context) {
         _notesFolder.value = uri.takeIf { writable }
     }
 
-    private fun isWritable(uri: Uri) =
-        resolver.persistedUriPermissions.any { it.uri == uri && it.isWritePermission }
+    private fun isWritable(uri: Uri) = resolver.persistedUriPermissions.any { it.uri == uri && it.isWritePermission }
 
     private fun release(uri: Uri) {
         val permission = resolver.persistedUriPermissions.firstOrNull { it.uri == uri } ?: return
@@ -75,6 +74,7 @@ class LibraryRepository(context: Context) {
                 val mime = cursor.getString(2)
                 when {
                     mime == Document.MIME_TYPE_DIR -> if (!name.startsWith(".")) collectPdfs(tree, id, into)
+
                     mime == "application/pdf" || PDF_EXTENSION.containsMatchIn(name) ->
                         into += Sheet(DocumentsContract.buildDocumentUriUsingTree(tree, id), titleOf(name))
                 }

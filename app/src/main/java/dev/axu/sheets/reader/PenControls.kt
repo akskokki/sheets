@@ -46,7 +46,8 @@ fun PenControls(pen: PenSettings, vertical: Boolean) {
                 description = "${width.name} line",
                 onSelect = { pen.select(width) },
             ) {
-                Box(Modifier.size((width.size * DOT_SIZE_PER_POINT).dp).clip(CircleShape).background(Color(pen.color.argb)))
+                val dotSize = (width.size * DOT_SIZE_PER_POINT).dp
+                Box(Modifier.size(dotSize).clip(CircleShape).background(Color(pen.color.argb)))
             }
         }
     }

@@ -37,7 +37,12 @@ suspend fun PdfDocument.contentBounds(): List<RectF?> = withContext(Dispatchers.
         bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
         bitmap.recycle()
         printedArea(pixels, width, height)?.let {
-            RectF(it.left / width.toFloat(), it.top / height.toFloat(), it.right / width.toFloat(), it.bottom / height.toFloat())
+            RectF(
+                it.left / width.toFloat(),
+                it.top / height.toFloat(),
+                it.right / width.toFloat(),
+                it.bottom / height.toFloat(),
+            )
         }
     }
 }

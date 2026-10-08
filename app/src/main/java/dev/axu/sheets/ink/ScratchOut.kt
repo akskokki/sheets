@@ -45,16 +45,20 @@ object ScratchOut {
 object ScratchGesture {
     /** Smallest scratch worth considering, about 1.5 mm. */
     internal const val MIN_EXTENT = 4f
+
     /** Turns needed, i.e. strokes back and forth minus one. */
     internal const val MIN_REVERSALS = 6
+
     /** Swings shorter than this fraction of the scratch's extent are jitter, not reversals. */
     private const val SWING_FRACTION = 0.3f
+
     /**
      * Path length relative to the length of the shape. A scribble covers its ground several times;
      * a zigzag progressing across a note needs swings at least ~1.5x higher than they advance,
      * which trills don't have.
      */
     private const val MIN_DENSITY = 1.75f
+
     /** Spread of distances from the center relative to their mean; near 0 for a circle. */
     private const val MIN_RADIAL_VARIATION = 0.3f
     private const val RESAMPLED_POINTS = 200
@@ -116,6 +120,7 @@ object ScratchGesture {
                     direction = if (v > extreme) 1 else -1
                     extreme = v
                 }
+
                 1 -> if (v > extreme) {
                     extreme = v
                 } else if (extreme - v >= threshold) {
@@ -123,6 +128,7 @@ object ScratchGesture {
                     direction = -1
                     extreme = v
                 }
+
                 else -> if (v < extreme) {
                     extreme = v
                 } else if (v - extreme >= threshold) {

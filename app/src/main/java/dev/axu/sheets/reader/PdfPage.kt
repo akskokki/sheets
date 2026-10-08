@@ -78,7 +78,9 @@ fun PdfPage(
         // size's bitmap stays up, stretched to fit, until the new one is ready.
         val bitmap by produceState<ImageBitmap?>(
             initialValue = pages.cached(index, crop, fitted.width, fitted.height)?.asImageBitmap(),
-            index, crop, fitted,
+            index,
+            crop,
+            fitted,
         ) {
             value = pages.page(index, crop, fitted.width, fitted.height).asImageBitmap()
         }
@@ -119,7 +121,10 @@ fun PdfPage(
                     val r = it.region
                     drawImage(
                         it.bitmap,
-                        dstOffset = IntOffset(((r.left - crop.left) * pageToPx).roundToInt(), ((r.top - crop.top) * pageToPx).roundToInt()),
+                        dstOffset = IntOffset(
+                            ((r.left - crop.left) * pageToPx).roundToInt(),
+                            ((r.top - crop.top) * pageToPx).roundToInt(),
+                        ),
                         dstSize = IntSize((r.width() * pageToPx).roundToInt(), (r.height() * pageToPx).roundToInt()),
                     )
                 }

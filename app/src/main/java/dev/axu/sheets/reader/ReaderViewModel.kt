@@ -32,10 +32,7 @@ sealed interface ReaderState {
     ) : ReaderState
 }
 
-class ReaderViewModel(
-    private val uri: Uri,
-    private val container: AppContainer,
-) : ViewModel() {
+class ReaderViewModel(private val uri: Uri, private val container: AppContainer) : ViewModel() {
     var state: ReaderState by mutableStateOf(ReaderState.Loading)
         private set
 

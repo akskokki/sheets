@@ -27,19 +27,9 @@ import dev.axu.sheets.ink.PenSettings
 /** Width of the vertical toolbar, used when the page leaves enough room beside it. */
 val ToolbarRailWidth: Dp = 72.dp
 
-class ToolbarState(
-    val title: String,
-    val page: Int,
-    val pageCount: Int,
-    val canUndo: Boolean,
-    val canRedo: Boolean,
-)
+class ToolbarState(val title: String, val page: Int, val pageCount: Int, val canUndo: Boolean, val canRedo: Boolean)
 
-class ToolbarActions(
-    val onBack: () -> Unit,
-    val onUndo: () -> Unit,
-    val onRedo: () -> Unit,
-)
+class ToolbarActions(val onBack: () -> Unit, val onUndo: () -> Unit, val onRedo: () -> Unit)
 
 /** A bar across the top of the screen. */
 @Composable

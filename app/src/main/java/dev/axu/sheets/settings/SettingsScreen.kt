@@ -38,7 +38,10 @@ fun SettingsScreen(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
 
     Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-        Row(Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             IconButton(onClick = onBack) { Icon(painterResource(R.drawable.ic_back), contentDescription = "Back") }
             Spacer(Modifier.width(8.dp))
             Text("Settings", style = MaterialTheme.typography.headlineLarge)
@@ -130,7 +133,11 @@ private fun Toggle(title: String, description: String, checked: Boolean, onChang
     ) {
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
-            Text(description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         Spacer(Modifier.width(24.dp))
         Switch(checked = checked, onCheckedChange = null)

@@ -71,7 +71,9 @@ private fun App() {
             onOpenSheet = { screen = Screen.Reader(it.uri, it.title) },
             onOpenSettings = { screen = Screen.Settings },
         )
+
         Screen.Settings -> SettingsScreen(onBack = { screen = Screen.Library })
+
         is Screen.Reader -> ReaderScreen(current.uri, current.title, onBack = { screen = Screen.Library })
     }
 }

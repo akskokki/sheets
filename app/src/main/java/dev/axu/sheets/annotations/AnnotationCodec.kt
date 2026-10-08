@@ -94,7 +94,12 @@ internal object AnnotationCodec {
         val brushes = List(readInt()) {
             val familyId = readUTF()
             val family = Pens.familyOf(familyId) ?: throw NewerFormatException("Unknown brush family $familyId")
-            Brush.createWithColorIntArgb(family, colorIntArgb = readInt(), size = readFloat(), epsilon = readFloat())
+            Brush.createWithColorIntArgb(
+                family,
+                colorIntArgb = readInt(),
+                size = readFloat(),
+                epsilon = readFloat(),
+            )
         }
         val pages = HashMap<Int, List<Stroke>>()
         repeat(readInt()) {

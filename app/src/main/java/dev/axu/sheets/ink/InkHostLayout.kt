@@ -127,6 +127,7 @@ class InkHostLayout(
                     prediction?.recycle()
                 }
             }
+
             MotionEvent.ACTION_UP -> {
                 if (event.flags and MotionEvent.FLAG_CANCELED != 0) {
                     cancelStroke(id, event)
@@ -135,6 +136,7 @@ class InkHostLayout(
                 }
                 activeStroke = null
             }
+
             MotionEvent.ACTION_CANCEL -> {
                 cancelStroke(id, event)
                 activeStroke = null
