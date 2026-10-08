@@ -14,8 +14,7 @@ source env.sh                 # puts java and adb on PATH for this shell
 ```
 
 Debug and release share a signing key, so either can be installed over the other without losing
-annotations. Annotations live in app storage: uninstalling the app (or clearing its data) deletes
-them.
+annotations.
 
 ```sh
 ./gradlew testDebugUnitTest            # JVM tests (scratch-out recognition)
@@ -38,5 +37,9 @@ them.
   ignores finger gestures that start while the pen is down or hovering. The device's own
   palm rejection, if it has one, can be enabled for the app as well.
 - **Annotations** (`annotations/`): strokes are stored in PDF point coordinates, so they stay aligned
-  at any size or orientation, in app storage keyed by a SHA-256 of the PDF's contents. PDFs are
-  never modified.
+  at any size or orientation, keyed by a SHA-256 of the PDF's contents. PDFs are never modified.
+  Each save goes to app storage and to a hidden `.annotations` folder inside the sheet music folder
+  (once the app has write access; the library asks for it). The newest copy wins on load, so notes
+  survive uninstalling: pick the same folder again and they're back. The file also records the
+  order strokes were drawn in, so undo reaches back across sessions.
+- **Pens** (`ink/Pens.kt`): a few colors and three widths, picked in the toolbar and remembered.
