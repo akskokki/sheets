@@ -57,6 +57,9 @@ kotlin {
     }
 }
 
+// Compile the on-device tests too, so their warnings and errors don't wait for a tablet.
+tasks.named("check") { dependsOn("assembleDebugAndroidTest") }
+
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.core.ktx)
