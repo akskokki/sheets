@@ -34,6 +34,12 @@ class AnnotationStore(
     /** Only touched on [io]. */
     private var folder: AnnotationFiles? = null
 
+    /**
+     * Documents with a copy written by a newer version of the app. This version can't read it, so
+     * it must never write over it either: that would lose the notes in it. Only touched on [io].
+     */
+    private val readOnly = HashSet<String>()
+
     private val stores get() = listOfNotNull(local, folder)
 
     init {
@@ -64,6 +70,10 @@ class AnnotationStore(
         for (copy in copies) {
             val saved = try {
                 copy.bytes.inputStream().use(AnnotationCodec::decode)
+            } catch (e: NewerFormatException) {
+                Log.w(TAG, "Annotations $key are from a newer version; leaving them alone", e)
+                readOnly += key
+                continue
             } catch (e: Exception) {
                 Log.e(TAG, "Can't read annotations $key", e)
                 runCatching { copy.store.moveAside(key) }
@@ -90,9 +100,16 @@ class AnnotationStore(
 
     private class Copy(val store: AnnotationFiles, val bytes: ByteArray, val savedAtMillis: Long)
 
-    /** A store's copy of [key], or null if it has none or it's unreadable (then it's set aside). */
+    /**
+     * A store's copy of [key], or null if it has none or can't read it. Unreadable copies are set
+     * aside, except ones from a newer version, which are left alone.
+     */
     private fun readCopy(store: AnnotationFiles, key: String): Copy? = try {
         store.read(key)?.let { Copy(store, it, it.inputStream().use(AnnotationCodec::savedAtMillis)) }
+    } catch (e: NewerFormatException) {
+        Log.w(TAG, "Annotations $key are from a newer version; leaving them alone", e)
+        readOnly += key
+        null
     } catch (e: Exception) {
         Log.e(TAG, "Can't read annotations $key", e)
         runCatching { store.moveAside(key) }
@@ -115,6 +132,10 @@ class AnnotationStore(
     }
 
     private fun writeSafely(store: AnnotationFiles, key: String, bytes: ByteArray) {
+        if (key in readOnly) {
+            Log.w(TAG, "Not writing annotations $key over a newer version's")
+            return
+        }
         try {
             store.write(key, bytes)
         } catch (e: Exception) {

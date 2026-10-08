@@ -25,6 +25,9 @@ class Annotations(val pages: Map<Int, List<Stroke>>, val drawingOrder: List<Stro
     }
 }
 
+/** Written by a newer version of the app: not broken, just not readable by this one. */
+class NewerFormatException(message: String) : IOException(message)
+
 /**
  * Binary format for a document's annotations:
  *
@@ -90,7 +93,7 @@ internal object AnnotationCodec {
         val (version, _) = readHeader()
         val brushes = List(readInt()) {
             val familyId = readUTF()
-            val family = Pens.familyOf(familyId) ?: throw IOException("Unknown brush family $familyId")
+            val family = Pens.familyOf(familyId) ?: throw NewerFormatException("Unknown brush family $familyId")
             Brush.createWithColorIntArgb(family, colorIntArgb = readInt(), size = readFloat(), epsilon = readFloat())
         }
         val pages = HashMap<Int, List<Stroke>>()
@@ -120,7 +123,7 @@ internal object AnnotationCodec {
         return when (val version = readInt()) {
             1 -> 1 to 0L
             2 -> 2 to readLong()
-            else -> throw IOException("Unsupported annotation version $version")
+            else -> throw NewerFormatException("Unsupported annotation version $version")
         }
     }
 
