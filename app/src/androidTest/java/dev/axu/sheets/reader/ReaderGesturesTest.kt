@@ -28,6 +28,9 @@ class ReaderGesturesTest {
     val rule = createComposeRule()
 
     private val taps = mutableListOf<String>()
+
+    /** How long a quick tap's fingers stay down. */
+    private val quickTap = TAP_TIMEOUT_MILLIS / 5
     private val zoom = PageZoom()
 
     @Before
@@ -56,7 +59,7 @@ class ReaderGesturesTest {
         rule.onNodeWithTag("area").performTouchInput {
             down(0, center)
             down(1, center + Offset(120f, 0f))
-            advanceEventTime(80)
+            advanceEventTime(quickTap)
             up(0)
             up(1)
         }
@@ -69,7 +72,7 @@ class ReaderGesturesTest {
             down(0, center)
             down(1, center + Offset(120f, 0f))
             down(2, center + Offset(240f, 0f))
-            advanceEventTime(80)
+            advanceEventTime(quickTap)
             up(0)
             up(1)
             up(2)
@@ -95,7 +98,7 @@ class ReaderGesturesTest {
     fun longPressIsNotATap() {
         rule.onNodeWithTag("area").performTouchInput {
             down(center)
-            advanceEventTime(800)
+            advanceEventTime(TAP_TIMEOUT_MILLIS * 2)
             up()
         }
         rule.runOnIdle { assertEquals(emptyList<String>(), taps) }
@@ -141,7 +144,7 @@ class ReaderGesturesTest {
         rule.onNodeWithTag("area").performTouchInput {
             down(0, center)
             down(1, center + Offset(120f, 0f))
-            advanceEventTime(80)
+            advanceEventTime(quickTap)
             up(0)
             up(1)
         }

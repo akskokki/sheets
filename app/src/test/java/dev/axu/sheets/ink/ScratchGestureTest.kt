@@ -1,5 +1,6 @@
 package dev.axu.sheets.ink
 
+import dev.axu.sheets.ink.ScratchGesture.MIN_REVERSALS
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -7,7 +8,11 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-/** Shapes are in PDF points; a staff space is about 5-7 points on typical sheet music. */
+/**
+ * Shapes are in PDF points; a staff space is about 5-7 points on typical sheet music.
+ *
+ * Scratches are built from [MIN_REVERSALS], so tuning it needs no changes here.
+ */
 class ScratchGestureTest {
     private class Path {
         val xs = ArrayList<Float>()
@@ -32,6 +37,23 @@ class ScratchGestureTest {
         fun matches() = ScratchGesture.matches(xs.toFloatArray(), ys.toFloatArray())
     }
 
+    /**
+     * Strokes [swing] long back and forth with [turns] turns between them, each [step] further on,
+     * sampled densely or (like fast input) only at the turns.
+     */
+    private fun zigzag(turns: Int, swing: Float, step: Float, dense: Boolean = true) = Path().apply {
+        for (i in 0..turns + 1) {
+            val x = if (i % 2 == 0) 0f else swing
+            val y = i * step
+            if (dense) {
+                lineTo(x, y)
+            } else {
+                xs += x
+                ys += y
+            }
+        }
+    }
+
     private fun parametric(steps: Int, point: (Double) -> Pair<Double, Double>) = Path().apply {
         for (i in 0..steps) {
             val (x, y) = point(i.toDouble() / steps)
@@ -42,49 +64,40 @@ class ScratchGestureTest {
 
     @Test
     fun zigzagInPlace() {
-        val path = Path().lineTo(0f, 0f)
-        repeat(3) { path.lineTo(20f, 1f).lineTo(0f, 2f) }
-        path.lineTo(20f, 3f)
-        assertTrue(path.matches())
+        assertTrue(zigzag(MIN_REVERSALS, swing = 20f, step = 1f).matches())
     }
 
     @Test
     fun fastZigzagSampledOnlyAtTheTurns() {
-        val xs = floatArrayOf(0f, 20f, 0f, 20f, 0f, 20f, 0f, 20f)
-        val ys = floatArrayOf(0f, 1f, 2f, 3f, 4f, 5f, 6f, 7f)
-        assertTrue(ScratchGesture.matches(xs, ys))
+        assertTrue(zigzag(MIN_REVERSALS, swing = 20f, step = 1f, dense = false).matches())
     }
 
     @Test
     fun zigzagAcrossLongNote() {
-        // Scratching out a fingering written along the staff: swings of 8 pt, progressing 40 pt.
-        val path = Path().lineTo(0f, 0f)
-        for (i in 1..8) path.lineTo(i * 5f, if (i % 2 == 1) 8f else 0f)
-        assertTrue(path.matches())
+        // Scratching out a fingering written along the staff: swings of 8 pt, progressing 5 pt each.
+        assertTrue(zigzag(MIN_REVERSALS, swing = 8f, step = 5f).matches())
     }
 
     @Test
     fun thinLoopScribble() {
         // Continuous thin ovals drifting sideways, the other common way to scratch something out.
-        val path = parametric(400) { t ->
-            val a = t * 4 * 2 * PI
-            Pair(t * 12 + 3 * cos(a), 12 * sin(a))
+        // Each loop turns twice across the drift.
+        val loops = MIN_REVERSALS / 2 + 1
+        val path = parametric(100 * loops) { t ->
+            val a = t * loops * 2 * PI
+            Pair(t * 3 * loops + 3 * cos(a), 12 * sin(a))
         }
         assertTrue(path.matches())
     }
 
     @Test
-    fun fiveTurnsAreNotEnough() {
-        val path = Path().lineTo(0f, 0f)
-        repeat(3) { path.lineTo(20f, 1f).lineTo(0f, 2f) }
-        assertFalse(path.matches())
+    fun oneTurnTooFewIsNotEnough() {
+        assertFalse(zigzag(MIN_REVERSALS - 1, swing = 20f, step = 1f).matches())
     }
 
     @Test
     fun tinyJitterIsIgnored() {
-        val path = Path().lineTo(0f, 0f)
-        repeat(4) { path.lineTo(1f, 0.2f).lineTo(0f, 0.4f) }
-        assertFalse(path.matches())
+        assertFalse(zigzag(MIN_REVERSALS + 2, swing = 1f, step = 0.2f).matches())
     }
 
     @Test
@@ -107,7 +120,8 @@ class ScratchGestureTest {
     @Test
     fun sharpTrill() {
         val path = Path().lineTo(0f, 0f)
-        for (i in 1..16) path.lineTo(i * 4f, if (i % 2 == 1) 3f else 0f)
+        // Plenty of turns, but they don't double back.
+        for (i in 1..3 * MIN_REVERSALS) path.lineTo(i * 4f, if (i % 2 == 1) 3f else 0f)
         assertFalse(path.matches())
     }
 

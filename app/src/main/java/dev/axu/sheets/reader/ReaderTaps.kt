@@ -9,7 +9,7 @@ import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
 import kotlin.math.max
 
 /** Longest press, from the first finger down to the last up, that still counts as a tap. */
-private const val TAP_TIMEOUT_MILLIS = 400L
+internal const val TAP_TIMEOUT_MILLIS = 400L
 
 /**
  * Detects quick, still taps with any number of fingers. Anything that moves or lingers is left to
