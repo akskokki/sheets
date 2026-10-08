@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Five staff lines and a note head. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M6,2h36a4,4 0,0 1,4 4v36a4,4 0,0 1,-4 4h-36a4,4 0,0 1,-4 -4v-36a4,4 0,0 1,4 -4z" />
+    <path
+        android:strokeColor="#FF1F2937"
+        android:strokeWidth="1.5"
+        android:pathData="M8,14h32M8,19h32M8,24h32M8,29h32M8,34h32" />
+    <path
+        android:fillColor="#FF1F2937"
+        android:pathData="M27,10v19.5h1.6v-19.5z" />
+    <path
+        android:fillColor="#FF1A4FD6"
+        android:pathData="M22.3,31.8c-2.1,0.9 -4.2,0.4 -4.6,-1c-0.5,-1.4 1,-3.2 3.1,-4.1c2.1,-0.9 4.2,-0.4 4.6,1c0.5,1.4 -1,3.2 -3.1,4.1z" />
+</vector>
