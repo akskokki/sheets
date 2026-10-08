@@ -75,7 +75,7 @@ class LibraryRepository(context: Context) {
                 val mime = cursor.getString(2)
                 when {
                     mime == Document.MIME_TYPE_DIR -> if (!name.startsWith(".")) collectPdfs(tree, id, into)
-                    mime == "application/pdf" || name.endsWith(".pdf", ignoreCase = true) ->
+                    mime == "application/pdf" || PDF_EXTENSION.containsMatchIn(name) ->
                         into += Sheet(DocumentsContract.buildDocumentUriUsingTree(tree, id), titleOf(name))
                 }
             }
@@ -97,4 +97,6 @@ class LibraryRepository(context: Context) {
 
 /** "Stella's+Departure.pdf" -> "Stella's Departure" */
 internal fun titleOf(fileName: String): String =
-    fileName.removeSuffix(".pdf").removeSuffix(".PDF").replace('+', ' ').replace('_', ' ').trim()
+    fileName.replace(PDF_EXTENSION, "").replace('+', ' ').replace('_', ' ').trim()
+
+private val PDF_EXTENSION = Regex("""\.pdf$""", RegexOption.IGNORE_CASE)
