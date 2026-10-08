@@ -3,6 +3,8 @@ package dev.axu.sheets.pdf
 import android.content.ContentResolver
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.Matrix
+import android.graphics.RectF
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.ParcelFileDescriptor
@@ -35,14 +37,23 @@ class PdfDocument private constructor(
 
     val pageCount: Int get() = pageSizes.size
 
-    /** Renders page [index] scaled to exactly [width] x [height] pixels, on white. */
-    suspend fun render(index: Int, width: Int, height: Int): Bitmap = mutex.withLock {
+    /**
+     * Renders [region] (in points; the whole page by default) of page [index] scaled to exactly
+     * [width] x [height] pixels, on white.
+     */
+    suspend fun render(index: Int, width: Int, height: Int, region: RectF? = null): Bitmap = mutex.withLock {
         withContext(Dispatchers.IO) {
             check(!closed) { "Document is closed" }
             val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
             bitmap.eraseColor(Color.WHITE)
             renderer.openPage(index).use { page ->
-                page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                val transform = region?.let {
+                    Matrix().apply {
+                        setTranslate(-it.left, -it.top)
+                        postScale(width / it.width(), height / it.height())
+                    }
+                }
+                page.render(bitmap, null, transform, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
             }
             bitmap
         }

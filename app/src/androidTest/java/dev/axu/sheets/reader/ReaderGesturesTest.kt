@@ -15,17 +15,20 @@ import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
-class DetectTapsTest {
+/** The reader's own gesture detectors, stacked the way the reader uses them. */
+class ReaderGesturesTest {
     @get:Rule
     val rule = createComposeRule()
 
     private val taps = mutableListOf<String>()
+    private val zoom = PageZoom()
 
     @Before
     fun setUp() {
@@ -34,6 +37,7 @@ class DetectTapsTest {
                 Modifier
                     .size(400.dp)
                     .testTag("area")
+                    .pointerInput(Unit) { detectZoom(zoom) }
                     .pointerInput(Unit) {
                         detectTaps(onTap = { taps += "tap" }, onMultiFingerTap = { taps += "$it fingers" })
                     },
@@ -95,5 +99,55 @@ class DetectTapsTest {
             up()
         }
         rule.runOnIdle { assertEquals(emptyList<String>(), taps) }
+    }
+
+    @Test
+    fun pinchZoomsAroundFingers() {
+        rule.onNodeWithTag("area").performTouchInput {
+            pinch(center - Offset(50f, 0f), center - Offset(250f, 0f), center + Offset(50f, 0f), center + Offset(250f, 0f))
+        }
+        rule.runOnIdle {
+            assertTrue("scale ${zoom.scale}", zoom.scale > 2f)
+            assertEquals(emptyList<String>(), taps)
+        }
+    }
+
+    @Test
+    fun pinchingOutBeyondFitStaysAtFit() {
+        rule.onNodeWithTag("area").performTouchInput {
+            pinch(center - Offset(250f, 0f), center - Offset(50f, 0f), center + Offset(250f, 0f), center + Offset(50f, 0f))
+        }
+        rule.runOnIdle { assertEquals(1f, zoom.scale) }
+    }
+
+    @Test
+    fun oneFingerPansOnlyWhenZoomedIn() {
+        rule.onNodeWithTag("area").performTouchInput { swipeLeft() }
+        rule.runOnIdle { assertEquals(Offset.Zero, zoom.offset) }
+
+        rule.onNodeWithTag("area").performTouchInput {
+            pinch(center - Offset(50f, 0f), center - Offset(250f, 0f), center + Offset(50f, 0f), center + Offset(250f, 0f))
+        }
+        val zoomedOffset = rule.runOnIdle { zoom.offset }
+        rule.onNodeWithTag("area").performTouchInput { swipeLeft() }
+        rule.runOnIdle {
+            assertTrue("offset ${zoom.offset}", zoom.offset.x < zoomedOffset.x)
+            assertEquals(emptyList<String>(), taps)
+        }
+    }
+
+    @Test
+    fun twoFingerTapDoesNotZoom() {
+        rule.onNodeWithTag("area").performTouchInput {
+            down(0, center)
+            down(1, center + Offset(120f, 0f))
+            advanceEventTime(80)
+            up(0)
+            up(1)
+        }
+        rule.runOnIdle {
+            assertEquals(listOf("2 fingers"), taps)
+            assertEquals(1f, zoom.scale)
+        }
     }
 }

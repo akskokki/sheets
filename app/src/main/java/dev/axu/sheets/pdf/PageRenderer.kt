@@ -1,10 +1,14 @@
 package dev.axu.sheets.pdf
 
 import android.graphics.Bitmap
+import android.graphics.RectF
 import android.util.LruCache
 
-/** Keeps recently rendered pages around so paging back and forth is instant. */
-class PageBitmapCache(private val document: PdfDocument) {
+/**
+ * Renders a document's pages. Whole pages are cached so paging back and forth is instant; zoomed
+ * in detail is rendered on demand.
+ */
+class PageRenderer(private val document: PdfDocument) {
     private data class Key(val index: Int, val width: Int, val height: Int)
 
     private val cache = object : LruCache<Key, Bitmap>(MAX_BYTES) {
@@ -13,9 +17,14 @@ class PageBitmapCache(private val document: PdfDocument) {
 
     fun cached(index: Int, width: Int, height: Int): Bitmap? = cache[Key(index, width, height)]
 
-    suspend fun get(index: Int, width: Int, height: Int): Bitmap =
+    /** Page [index] scaled to [width] x [height] pixels. */
+    suspend fun page(index: Int, width: Int, height: Int): Bitmap =
         cached(index, width, height)
             ?: document.render(index, width, height).also { cache.put(Key(index, width, height), it) }
+
+    /** [region] of page [index], in points, scaled to [width] x [height] pixels. */
+    suspend fun detail(index: Int, region: RectF, width: Int, height: Int): Bitmap =
+        document.render(index, width, height, region)
 
     private companion object {
         // A full-screen page on the target tablet is ~16 MB; this keeps about six.

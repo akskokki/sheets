@@ -11,7 +11,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.axu.sheets.AppContainer
 import dev.axu.sheets.ink.ScratchOut
-import dev.axu.sheets.pdf.PageBitmapCache
+import dev.axu.sheets.pdf.PageRenderer
 import dev.axu.sheets.pdf.PdfDocument
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -21,7 +21,7 @@ sealed interface ReaderState {
     data object Failed : ReaderState
     class Ready(
         val document: PdfDocument,
-        val pages: PageBitmapCache,
+        val pages: PageRenderer,
         val ink: DocumentInk,
         /** Identifies the document's contents; see [dev.axu.sheets.annotations.AnnotationStore]. */
         val documentKey: String,
@@ -55,7 +55,7 @@ class ReaderViewModel(
             val key = container.annotations.keyOf(uri)
             val ink = DocumentInk(container.annotations.load(key))
             val page = container.positions.pageOf(key).coerceIn(0, document.pageCount - 1)
-            return ReaderState.Ready(document, PageBitmapCache(document), ink, key, page)
+            return ReaderState.Ready(document, PageRenderer(document), ink, key, page)
         } catch (e: Exception) {
             document.close()
             throw e

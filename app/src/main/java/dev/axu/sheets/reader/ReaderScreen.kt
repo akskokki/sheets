@@ -82,6 +82,7 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
     val pagerState = rememberPagerState(initialPage = state.initialPage) { document.pageCount }
     var chromeVisible by rememberSaveable { mutableStateOf(true) }
     var message by remember { mutableStateOf<Message?>(null) }
+    val zoom = remember { PageZoom() }
     val scope = rememberCoroutineScope()
     val strokeRenderer = remember { CanvasStrokeRenderer.create() }
 
@@ -89,7 +90,10 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
         PageInkTargets(document.pageSizes, brush = { Pens.Default }, onStrokeFinished = viewModel::onStrokeFinished)
     }
     LaunchedEffect(pagerState) {
-        snapshotFlow { pagerState.settledPage }.collect(viewModel::onPageSettled)
+        snapshotFlow { pagerState.settledPage }.collect { page ->
+            zoom.reset()
+            viewModel.onPageSettled(page)
+        }
     }
 
     val inkHost = LocalInkHost.current
@@ -119,8 +123,10 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
             state = pagerState,
             beyondViewportPageCount = 1,
             key = { it },
+            userScrollEnabled = !zoom.isZoomed,
             modifier = Modifier
                 .fillMaxSize()
+                .pointerInput(zoom) { detectZoom(zoom) }
                 .pointerInput(pagerState) {
                     detectTaps(
                         // Sheet-music style tap zones: edges turn pages, the middle toggles the toolbar.
@@ -146,6 +152,7 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
                 index = index,
                 pageSize = document.pageSizes[index],
                 pages = state.pages,
+                zoom = zoom.takeIf { index == pagerState.currentPage },
                 modifier = Modifier.onGloballyPositioned { inkTargets.onPagePositioned(index, it) },
             ) { pageToPx ->
                 drawStrokes(ink.strokesOn(index), pageToPx, strokeRenderer)
