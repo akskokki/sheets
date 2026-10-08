@@ -9,13 +9,19 @@ import kotlin.math.roundToInt
 private const val SCAN_WIDTH = 400
 
 /** A pixel whose darkest channel is below this is printed on. */
-private const val INK_THRESHOLD = 192
+internal const val INK_THRESHOLD = 192
 
 /**
  * How far in from each edge, as a fraction of the page, marks that touch the edge are assumed to
  * be scanning artifacts (shadows, the table under a photographed page) rather than print.
  */
-private const val EDGE_BAND = 0.1f
+internal const val EDGE_BAND = 0.1f
+
+/**
+ * Identifies how [contentBounds] finds content, so results remembered from an earlier version or
+ * tuning are found again. Bump the number when changing the algorithm itself.
+ */
+val CONTENT_DETECTION_VERSION = "1;$SCAN_WIDTH;$INK_THRESHOLD;$EDGE_BAND"
 
 /**
  * Where anything is printed on each page, as fractions of the page size, or null for blank pages.

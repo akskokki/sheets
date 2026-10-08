@@ -3,14 +3,12 @@ package dev.axu.sheets.reader
 import android.content.Context
 import android.graphics.RectF
 import androidx.core.content.edit
+import dev.axu.sheets.pdf.CONTENT_DETECTION_VERSION
 import dev.axu.sheets.pdf.PdfDocument
 import dev.axu.sheets.pdf.contentBounds
 
 /** Blank space kept beside the music, as a fraction of the page width: room to write next to it. */
 private const val MARGIN = 0.03f
-
-/** Bump when finding the music changes, so it's found again rather than remembered. */
-private const val DETECTION_VERSION = 1
 
 /**
  * Crops the blank margins beside the music so it fills more of the screen. The top and bottom
@@ -44,13 +42,17 @@ class PageCrops(context: Context) {
 
     /** Pages are separated by ";", blank pages are empty. */
     private fun remembered(documentKey: String): List<RectF?>? =
-        prefs.getString("$DETECTION_VERSION:$documentKey", null)?.split(';')?.map { page ->
+        prefs.getString(prefKey(documentKey), null)?.split(';')?.map { page ->
             if (page.isEmpty()) return@map null
             val (left, top, right, bottom) = page.split(',').map { it.toFloat() }
             RectF(left, top, right, bottom)
         }
 
     private fun remember(documentKey: String, content: List<RectF?>) = prefs.edit {
-        putString("$DETECTION_VERSION:$documentKey", content.joinToString(";") { it?.run { "$left,$top,$right,$bottom" } ?: "" })
+        // Drop what an earlier version of detection found.
+        for (key in prefs.all.keys) if (key.endsWith(":$documentKey")) remove(key)
+        putString(prefKey(documentKey), content.joinToString(";") { it?.run { "$left,$top,$right,$bottom" } ?: "" })
     }
+
+    private fun prefKey(documentKey: String) = "$CONTENT_DETECTION_VERSION:$documentKey"
 }
