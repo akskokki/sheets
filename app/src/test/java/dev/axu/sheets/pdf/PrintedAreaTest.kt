@@ -53,4 +53,24 @@ class PrintedAreaTest {
         val pixels = page(20, 30) { set -> for (x in 2..8) for (y in 3..4) set(x, y, red) }
         assertEquals(PixelArea(left = 2, top = 3, right = 9, bottom = 5), printedArea(pixels, 20, 30))
     }
+
+    @Test
+    fun ignoresScanningArtifactsAtTheEdges() {
+        val pixels = page(100, 100) { set ->
+            for (x in 20..80) for (y in 30..60) set(x, y, black)
+            for (y in 0..99) for (x in 96..99) set(x, y, black) // the table beside a photographed page
+            for (x in 0..99) set(x, 99, black) // a shadow along the bottom
+        }
+        assertEquals(PixelArea(left = 20, top = 30, right = 81, bottom = 61), printedArea(pixels, 100, 100))
+    }
+
+    @Test
+    fun keepsPrintRunningOffTheEdge() {
+        val pixels = page(100, 100) { set ->
+            for (x in 0..99) set(x, 40, black) // a staff line printed edge to edge
+            for (x in 0..99) set(x, 44, black)
+            set(50, 39, black)
+        }
+        assertEquals(PixelArea(left = 0, top = 39, right = 100, bottom = 45), printedArea(pixels, 100, 100))
+    }
 }

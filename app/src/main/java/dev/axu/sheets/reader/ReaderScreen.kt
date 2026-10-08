@@ -202,13 +202,15 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
                 onRedo = { edit("Redo", viewModel::redo) },
             )
         }
-        // Prefer the margin beside the page (landscape), so the toolbar never covers the music.
-        val crop = state.crops[pagerState.currentPage]
-        val pageSize = PageSize(crop.width(), crop.height())
-        val fittedWidth = with(LocalDensity.current) {
-            (pageSize.width * pageSize.scaleToFit(constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat())).toDp()
+        // Prefer the margin beside the pages (landscape), so the toolbar never covers the music.
+        // Pages are cropped differently, so go by the widest to keep the toolbar put while paging.
+        val widestPage = remember(state.crops, constraints) {
+            state.crops.maxOf {
+                val size = PageSize(it.width(), it.height())
+                size.width * size.scaleToFit(constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat())
+            }
         }
-        val useRail = (maxWidth - fittedWidth) / 2 >= ToolbarRailWidth
+        val useRail = (maxWidth - with(LocalDensity.current) { widestPage.toDp() }) / 2 >= ToolbarRailWidth
         val toolbarModifier = Modifier.onGloballyPositioned { inkTargets.onExclusionPositioned(ToolbarKey, it) }
         AnimatedVisibility(chromeVisible, enter = fadeIn(), exit = fadeOut()) {
             DisposableEffect(Unit) { onDispose { inkTargets.onExclusionRemoved(ToolbarKey) } }
