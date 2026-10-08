@@ -45,6 +45,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.ink.rendering.android.canvas.CanvasStrokeRenderer
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.axu.sheets.appContainer
 import dev.axu.sheets.ink.LocalInkHost
@@ -59,7 +61,14 @@ private const val MESSAGE_MILLIS = 900L
 @Composable
 fun ReaderScreen(uri: Uri, title: String, onBack: () -> Unit) {
     val container = LocalContext.current.appContainer
-    val viewModel = viewModel(key = uri.toString()) { ReaderViewModel(uri, container) }
+    // Scoped to this visit rather than the activity, so leaving releases the document and its pages.
+    val owner = remember(uri) {
+        object : ViewModelStoreOwner {
+            override val viewModelStore = ViewModelStore()
+        }
+    }
+    DisposableEffect(owner) { onDispose { owner.viewModelStore.clear() } }
+    val viewModel = viewModel(owner) { ReaderViewModel(uri, container) }
 
     val settings = container.settings
 
