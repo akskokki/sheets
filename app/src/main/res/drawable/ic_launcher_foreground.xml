@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A quarter note on a staff. The stem starts at the head's rightmost point and runs into it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:translateX="3"
+        android:translateY="5">
+        <path
+            android:strokeColor="#FFAEB4BE"
+            android:strokeWidth="1.4"
+            android:pathData="M-3,32H111M-3,43H111M-3,54H111M-3,65H111M-3,76H111" />
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M43.36,62.38A7.7,5.3 -22 1 1 57.64,56.62A7.7,5.3 -22 1 1 43.36,62.38Z" />
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M55.51,21.00H57.91V58.04H55.51Z" />
+    </group>
+</vector>
