@@ -21,7 +21,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.axu.sheets.ink.PenSettings
 import dev.axu.sheets.ink.PenWidth
@@ -44,10 +43,10 @@ fun PenControls(pen: PenSettings, vertical: Boolean) {
         for (width in PenWidth.entries) {
             Choice(
                 selected = pen.width == width,
-                description = "${width.label} line",
+                description = "${width.name} line",
                 onSelect = { pen.select(width) },
             ) {
-                Box(Modifier.size(width.dotSize).clip(CircleShape).background(Color(pen.color.argb)))
+                Box(Modifier.size((width.size * DOT_SIZE_PER_POINT).dp).clip(CircleShape).background(Color(pen.color.argb)))
             }
         }
     }
@@ -58,12 +57,8 @@ fun PenControls(pen: PenSettings, vertical: Boolean) {
     }
 }
 
-private val PenWidth.dotSize: Dp
-    get() = when (this) {
-        PenWidth.Fine -> 6.dp
-        PenWidth.Medium -> 11.dp
-        PenWidth.Bold -> 17.dp
-    }
+/** Width choices are shown as dots sized in proportion to the line. */
+private const val DOT_SIZE_PER_POINT = 7f
 
 /** A 44dp touch target with a ring around it when selected. */
 @Composable

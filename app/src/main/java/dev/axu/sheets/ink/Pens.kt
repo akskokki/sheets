@@ -13,10 +13,10 @@ import androidx.ink.brush.StockBrushes
 class PenColor(val name: String, val argb: Int)
 
 /** Stroke widths in PDF points, so ink keeps its weight relative to the music at any zoom. */
-enum class PenWidth(val label: String, val size: Float) {
-    Fine("Fine", 0.8f),
-    Medium("Medium", 1.4f),
-    Bold("Bold", 2.4f),
+enum class PenWidth(val size: Float) {
+    Fine(0.8f),
+    Medium(1.4f),
+    Bold(2.4f),
 }
 
 object Pens {
@@ -24,10 +24,8 @@ object Pens {
      * Brush families with stable IDs for storage. Versions are pinned so saved ink keeps looking
      * the same when the Ink library updates its stock brushes.
      */
-    private val families = mapOf(
-        "pressure-pen-v1" to StockBrushes.pressurePen(StockBrushes.PressurePenVersion.V1),
-    )
-    private val pen = families.getValue("pressure-pen-v1")
+    private val pen = StockBrushes.pressurePen(StockBrushes.PressurePenVersion.V1)
+    private val families = mapOf("pressure-pen-v1" to pen)
 
     val colors = listOf(
         PenColor("Blue", 0xFF1A4FD6.toInt()),
@@ -49,7 +47,9 @@ object Pens {
         )
     }
 
-    val Default: Brush = brush(colors.first(), PenWidth.Medium)
+    val defaultColor = colors.first()
+    val defaultWidth = PenWidth.Medium
+    val Default: Brush = brush(defaultColor, defaultWidth)
 
     fun idOf(family: BrushFamily): String =
         families.entries.firstOrNull { it.value == family }?.key ?: error("Unknown brush family $family")
@@ -63,12 +63,12 @@ class PenSettings(context: Context) {
     private val prefs = context.getSharedPreferences("pen", Context.MODE_PRIVATE)
 
     var color: PenColor by mutableStateOf(
-        Pens.colors.firstOrNull { it.name == prefs.getString(KEY_COLOR, null) } ?: Pens.colors.first(),
+        Pens.colors.firstOrNull { it.name == prefs.getString(KEY_COLOR, null) } ?: Pens.defaultColor,
     )
         private set
 
     var width: PenWidth by mutableStateOf(
-        PenWidth.entries.firstOrNull { it.name == prefs.getString(KEY_WIDTH, null) } ?: PenWidth.Medium,
+        PenWidth.entries.firstOrNull { it.name == prefs.getString(KEY_WIDTH, null) } ?: Pens.defaultWidth,
     )
         private set
 
