@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.ink.strokes.Stroke
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.axu.sheets.AppContainer
@@ -26,6 +27,8 @@ class ReaderViewModel(
     var state: ReaderState by mutableStateOf(ReaderState.Loading)
         private set
 
+    val ink = DocumentInk()
+
     init {
         viewModelScope.launch {
             state = try {
@@ -38,6 +41,12 @@ class ReaderViewModel(
                 ReaderState.Failed
             }
         }
+    }
+
+    fun onStrokeFinished(page: Int, stroke: Stroke) = ink.add(page, stroke)
+
+    fun undo() {
+        ink.undo()
     }
 
     override fun onCleared() {

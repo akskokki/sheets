@@ -1,6 +1,16 @@
 package dev.axu.sheets.reader
 
 import android.net.Uri
+import android.graphics.Matrix
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.ink.rendering.android.canvas.CanvasStrokeRenderer
+import androidx.ink.strokes.Stroke
+import dev.axu.sheets.ink.LocalInkHost
+import dev.axu.sheets.ink.Pens
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import androidx.activity.compose.BackHandler
@@ -47,6 +57,7 @@ import dev.axu.sheets.appContainer
 import kotlinx.coroutines.launch
 
 private val Backdrop = Color(0xFFE6E6EA)
+private val ToolbarKey = Any()
 
 @Composable
 fun ReaderScreen(uri: Uri, title: String, onBack: () -> Unit) {
@@ -63,17 +74,44 @@ fun ReaderScreen(uri: Uri, title: String, onBack: () -> Unit) {
                 Text("Couldn't open $title", style = MaterialTheme.typography.bodyLarge)
                 TextButton(onClick = onBack) { Text("Back") }
             }
-            is ReaderState.Ready -> Reader(state, title, onBack)
+            is ReaderState.Ready -> Reader(
+                state = state,
+                ink = viewModel.ink,
+                title = title,
+                onStrokeFinished = viewModel::onStrokeFinished,
+                onUndo = viewModel::undo,
+                onBack = onBack,
+            )
         }
     }
 }
 
 @Composable
-private fun Reader(state: ReaderState.Ready, title: String, onBack: () -> Unit) {
+private fun Reader(
+    state: ReaderState.Ready,
+    ink: DocumentInk,
+    title: String,
+    onStrokeFinished: (page: Int, stroke: Stroke) -> Unit,
+    onUndo: () -> Unit,
+    onBack: () -> Unit,
+) {
     val document = state.document
     val pagerState = rememberPagerState { document.pageCount }
     var chromeVisible by rememberSaveable { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
+    val strokeRenderer = remember { CanvasStrokeRenderer.create() }
+
+    val currentOnStrokeFinished by rememberUpdatedState(onStrokeFinished)
+    val inkTargets = remember(document) {
+        PageInkTargets(document.pageSizes, brush = { Pens.Default }) { page, stroke ->
+            currentOnStrokeFinished(page, stroke)
+        }
+    }
+    val inkHost = LocalInkHost.current
+    DisposableEffect(inkHost, inkTargets) {
+        inkHost.targetResolver = inkTargets
+        onDispose { if (inkHost.targetResolver === inkTargets) inkHost.targetResolver = null }
+    }
 
     Box(Modifier.fillMaxSize()) {
         HorizontalPager(
@@ -94,23 +132,54 @@ private fun Reader(state: ReaderState.Ready, title: String, onBack: () -> Unit) 
                     }
                 },
         ) { index ->
-            PdfPage(index, document.pageSizes[index], state.pages)
+            DisposableEffect(index) { onDispose { inkTargets.onPageRemoved(index) } }
+            PdfPage(
+                index = index,
+                pageSize = document.pageSizes[index],
+                pages = state.pages,
+                modifier = Modifier.onGloballyPositioned { inkTargets.onPagePositioned(index, it) },
+            ) { pageToPx ->
+                val strokes = ink.strokesOn(index)
+                if (strokes.isNotEmpty()) {
+                    val pageToCanvas = Matrix().apply { setScale(pageToPx, pageToPx) }
+                    drawIntoCanvas {
+                        val canvas = it.nativeCanvas
+                        val checkpoint = canvas.save()
+                        // The renderer only uses the matrix for level of detail; the canvas has to apply it.
+                        canvas.concat(pageToCanvas)
+                        for (stroke in strokes) strokeRenderer.draw(canvas, stroke, pageToCanvas)
+                        canvas.restoreToCount(checkpoint)
+                    }
+                }
+            }
         }
 
         AnimatedVisibility(chromeVisible, enter = fadeIn(), exit = fadeOut()) {
+            DisposableEffect(Unit) { onDispose { inkTargets.onExclusionRemoved(ToolbarKey) } }
             ReaderToolbar(
                 title = title,
                 page = pagerState.currentPage + 1,
                 pageCount = document.pageCount,
+                canUndo = ink.canUndo,
+                onUndo = onUndo,
                 onBack = onBack,
+                modifier = Modifier.onGloballyPositioned { inkTargets.onExclusionPositioned(ToolbarKey, it) },
             )
         }
     }
 }
 
 @Composable
-private fun ReaderToolbar(title: String, page: Int, pageCount: Int, onBack: () -> Unit) {
-    Surface(color = Color.White.copy(alpha = 0.94f), shadowElevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
+private fun ReaderToolbar(
+    title: String,
+    page: Int,
+    pageCount: Int,
+    canUndo: Boolean,
+    onUndo: () -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(color = Color.White.copy(alpha = 0.94f), shadowElevation = 2.dp, modifier = modifier.fillMaxWidth()) {
         Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) {
                 Icon(painterResource(R.drawable.ic_back), contentDescription = "Back")
@@ -122,7 +191,14 @@ private fun ReaderToolbar(title: String, page: Int, pageCount: Int, onBack: () -
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
             )
-            Text("$page / $pageCount", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(end = 16.dp))
+            IconButton(onClick = onUndo, enabled = canUndo) {
+                Icon(painterResource(R.drawable.ic_undo), contentDescription = "Undo")
+            }
+            Text(
+                "$page / $pageCount",
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(start = 8.dp, end = 16.dp),
+            )
         }
     }
 }
