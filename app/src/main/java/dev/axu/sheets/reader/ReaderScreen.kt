@@ -46,7 +46,6 @@ import androidx.ink.rendering.android.canvas.CanvasStrokeRenderer
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.axu.sheets.appContainer
 import dev.axu.sheets.ink.LocalInkHost
-import dev.axu.sheets.ink.Pens
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -86,8 +85,9 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
     val scope = rememberCoroutineScope()
     val strokeRenderer = remember { CanvasStrokeRenderer.create() }
 
+    val pen = LocalContext.current.appContainer.pen
     val inkTargets = remember(document) {
-        PageInkTargets(document.pageSizes, brush = { Pens.Default }, onStrokeFinished = viewModel::onStrokeFinished)
+        PageInkTargets(document.pageSizes, brush = { pen.brush }, onStrokeFinished = viewModel::onStrokeFinished)
     }
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.settledPage }.collect { page ->
@@ -188,9 +188,9 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
         AnimatedVisibility(chromeVisible, enter = fadeIn(), exit = fadeOut()) {
             DisposableEffect(Unit) { onDispose { inkTargets.onExclusionRemoved(ToolbarKey) } }
             if (useRail) {
-                ReaderSideRail(toolbarState, toolbarActions, toolbarModifier)
+                ReaderSideRail(toolbarState, toolbarActions, pen, toolbarModifier)
             } else {
-                ReaderTopBar(toolbarState, toolbarActions, toolbarModifier)
+                ReaderTopBar(toolbarState, toolbarActions, pen, toolbarModifier)
             }
         }
 

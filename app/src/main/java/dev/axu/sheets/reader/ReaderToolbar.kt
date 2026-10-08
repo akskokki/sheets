@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.axu.sheets.R
+import dev.axu.sheets.ink.PenSettings
 
 /** Width of the vertical toolbar, used when the page leaves enough room beside it. */
 val ToolbarRailWidth: Dp = 72.dp
@@ -42,7 +43,7 @@ class ToolbarActions(
 
 /** A bar across the top of the screen. */
 @Composable
-fun ReaderTopBar(state: ToolbarState, actions: ToolbarActions, modifier: Modifier = Modifier) {
+fun ReaderTopBar(state: ToolbarState, actions: ToolbarActions, pen: PenSettings, modifier: Modifier = Modifier) {
     Surface(color = ToolbarColor, shadowElevation = 2.dp, modifier = modifier.fillMaxWidth()) {
         Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             BackButton(actions)
@@ -53,6 +54,8 @@ fun ReaderTopBar(state: ToolbarState, actions: ToolbarActions, modifier: Modifie
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
             )
+            PenControls(pen, vertical = false)
+            Spacer(Modifier.width(16.dp))
             EditButtons(state, actions)
             PageNumber(state, Modifier.padding(start = 8.dp, end = 16.dp))
         }
@@ -61,12 +64,14 @@ fun ReaderTopBar(state: ToolbarState, actions: ToolbarActions, modifier: Modifie
 
 /** A rail down the side of the screen, for the margin beside a page in landscape. */
 @Composable
-fun ReaderSideRail(state: ToolbarState, actions: ToolbarActions, modifier: Modifier = Modifier) {
+fun ReaderSideRail(state: ToolbarState, actions: ToolbarActions, pen: PenSettings, modifier: Modifier = Modifier) {
     Surface(color = ToolbarColor, shadowElevation = 2.dp, modifier = modifier.width(ToolbarRailWidth).fillMaxHeight()) {
         Column(Modifier.padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             BackButton(actions)
             Spacer(Modifier.height(24.dp))
             EditButtons(state, actions)
+            Spacer(Modifier.height(24.dp))
+            PenControls(pen, vertical = true)
             Spacer(Modifier.weight(1f))
             PageNumber(state, Modifier.padding(bottom = 16.dp))
         }
