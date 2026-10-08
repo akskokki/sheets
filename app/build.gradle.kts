@@ -9,11 +9,11 @@ android {
 
     defaultConfig {
         applicationId = "dev.axu.sheets"
-        // Personal app for a single Android 16 tablet; no need to carry compatibility code.
-        minSdk = 36
+        // Android 11: the window insets controller API the reader uses arrived in 30.
+        minSdk = 30
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
