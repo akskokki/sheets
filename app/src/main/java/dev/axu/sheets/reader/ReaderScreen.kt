@@ -79,6 +79,7 @@ fun ReaderScreen(uri: Uri, title: String, onBack: () -> Unit) {
                 title = title,
                 onStrokeFinished = viewModel::onStrokeFinished,
                 onUndo = viewModel::undo,
+                onRedo = viewModel::redo,
                 onBack = onBack,
             )
         }
@@ -91,6 +92,7 @@ private fun Reader(
     title: String,
     onStrokeFinished: (page: Int, stroke: Stroke) -> Unit,
     onUndo: () -> Unit,
+    onRedo: () -> Unit,
     onBack: () -> Unit,
 ) {
     val document = state.document
@@ -160,7 +162,9 @@ private fun Reader(
                 page = pagerState.currentPage + 1,
                 pageCount = document.pageCount,
                 canUndo = ink.canUndo,
+                canRedo = ink.canRedo,
                 onUndo = onUndo,
+                onRedo = onRedo,
                 onBack = onBack,
                 modifier = Modifier.onGloballyPositioned { inkTargets.onExclusionPositioned(ToolbarKey, it) },
             )
@@ -174,7 +178,9 @@ private fun ReaderToolbar(
     page: Int,
     pageCount: Int,
     canUndo: Boolean,
+    canRedo: Boolean,
     onUndo: () -> Unit,
+    onRedo: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -192,6 +198,9 @@ private fun ReaderToolbar(
             )
             IconButton(onClick = onUndo, enabled = canUndo) {
                 Icon(painterResource(R.drawable.ic_undo), contentDescription = "Undo")
+            }
+            IconButton(onClick = onRedo, enabled = canRedo) {
+                Icon(painterResource(R.drawable.ic_redo), contentDescription = "Redo")
             }
             Text(
                 "$page / $pageCount",

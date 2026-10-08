@@ -65,7 +65,12 @@ class ReaderViewModel(
 
     fun undo() {
         val ready = state as? ReaderState.Ready ?: return
-        if (ready.ink.undo() != null) save(ready)
+        if (ready.ink.undo()) save(ready)
+    }
+
+    fun redo() {
+        val ready = state as? ReaderState.Ready ?: return
+        if (ready.ink.redo()) save(ready)
     }
 
     private fun save(ready: ReaderState.Ready) =
