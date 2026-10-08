@@ -3,12 +3,14 @@ package dev.axu.sheets.reader
 import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.ink.strokes.Stroke
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.axu.sheets.AppContainer
+import dev.axu.sheets.ink.ScratchOut
 import dev.axu.sheets.pdf.PageBitmapCache
 import dev.axu.sheets.pdf.PdfDocument
 import kotlinx.coroutines.CancellationException
@@ -57,10 +59,23 @@ class ReaderViewModel(
         }
     }
 
+    /** Scratched-out ink that's still fading out on screen. */
+    val erasures = mutableStateListOf<Erasure>()
+
     fun onStrokeFinished(page: Int, stroke: Stroke) {
         val ready = state as? ReaderState.Ready ?: return
-        ready.ink.add(page, stroke)
+        val erased = ScratchOut.erasedBy(stroke, ready.ink.strokesOn(page))
+        if (erased.isEmpty()) {
+            ready.ink.add(page, stroke)
+        } else {
+            ready.ink.erase(page, erased)
+            erasures += Erasure(page, erased + stroke)
+        }
         save(ready)
+    }
+
+    fun onErasureFaded(erasure: Erasure) {
+        erasures -= erasure
     }
 
     fun undo() {

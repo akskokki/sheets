@@ -1,11 +1,11 @@
 package dev.axu.sheets.reader
 
 import android.net.Uri
-import android.graphics.Matrix
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.ink.rendering.android.canvas.CanvasStrokeRenderer
 import androidx.ink.strokes.Stroke
@@ -58,6 +58,7 @@ import kotlinx.coroutines.launch
 
 private val Backdrop = Color(0xFFE6E6EA)
 private val ToolbarKey = Any()
+private const val ERASE_FADE_MILLIS = 180
 
 @Composable
 fun ReaderScreen(uri: Uri, title: String, onBack: () -> Unit) {
@@ -77,7 +78,9 @@ fun ReaderScreen(uri: Uri, title: String, onBack: () -> Unit) {
             is ReaderState.Ready -> Reader(
                 state = state,
                 title = title,
+                erasures = viewModel.erasures,
                 onStrokeFinished = viewModel::onStrokeFinished,
+                onErasureFaded = viewModel::onErasureFaded,
                 onUndo = viewModel::undo,
                 onRedo = viewModel::redo,
                 onBack = onBack,
@@ -90,7 +93,9 @@ fun ReaderScreen(uri: Uri, title: String, onBack: () -> Unit) {
 private fun Reader(
     state: ReaderState.Ready,
     title: String,
+    erasures: List<Erasure>,
     onStrokeFinished: (page: Int, stroke: Stroke) -> Unit,
+    onErasureFaded: (Erasure) -> Unit,
     onUndo: () -> Unit,
     onRedo: () -> Unit,
     onBack: () -> Unit,
@@ -108,6 +113,15 @@ private fun Reader(
             currentOnStrokeFinished(page, stroke)
         }
     }
+    for (erasure in erasures) {
+        key(erasure) {
+            LaunchedEffect(Unit) {
+                erasure.alpha.animateTo(0f, tween(ERASE_FADE_MILLIS))
+                onErasureFaded(erasure)
+            }
+        }
+    }
+
     val inkHost = LocalInkHost.current
     DisposableEffect(inkHost, inkTargets) {
         inkHost.targetResolver = inkTargets
@@ -140,17 +154,9 @@ private fun Reader(
                 pages = state.pages,
                 modifier = Modifier.onGloballyPositioned { inkTargets.onPagePositioned(index, it) },
             ) { pageToPx ->
-                val strokes = ink.strokesOn(index)
-                if (strokes.isNotEmpty()) {
-                    val pageToCanvas = Matrix().apply { setScale(pageToPx, pageToPx) }
-                    drawIntoCanvas {
-                        val canvas = it.nativeCanvas
-                        val checkpoint = canvas.save()
-                        // The renderer only uses the matrix for level of detail; the canvas has to apply it.
-                        canvas.concat(pageToCanvas)
-                        for (stroke in strokes) strokeRenderer.draw(canvas, stroke, pageToCanvas)
-                        canvas.restoreToCount(checkpoint)
-                    }
+                drawStrokes(ink.strokesOn(index), pageToPx, strokeRenderer)
+                for (erasure in erasures) {
+                    if (erasure.page == index) drawStrokes(erasure.strokes, pageToPx, strokeRenderer, erasure.alpha.value)
                 }
             }
         }
