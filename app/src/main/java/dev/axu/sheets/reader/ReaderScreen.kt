@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -41,6 +42,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.ink.rendering.android.canvas.CanvasStrokeRenderer
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -59,10 +61,19 @@ fun ReaderScreen(uri: Uri, title: String, onBack: () -> Unit) {
     val container = LocalContext.current.appContainer
     val viewModel = viewModel(key = uri.toString()) { ReaderViewModel(uri, container) }
 
-    BackHandler(onBack = onBack)
-    ImmersiveMode()
+    val settings = container.settings
 
-    Box(Modifier.fillMaxSize().background(Backdrop), contentAlignment = Alignment.Center) {
+    BackHandler(onBack = onBack)
+    if (settings.fullScreen) ImmersiveMode()
+    KeepScreenOn(settings.keepScreenOn)
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Backdrop)
+            .then(if (settings.fullScreen) Modifier else Modifier.systemBarsPadding()),
+        contentAlignment = Alignment.Center,
+    ) {
         when (val state = viewModel.state) {
             ReaderState.Loading -> CircularProgressIndicator()
             ReaderState.Failed -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -85,7 +96,9 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
     val scope = rememberCoroutineScope()
     val strokeRenderer = remember { CanvasStrokeRenderer.create() }
 
-    val pen = LocalContext.current.appContainer.pen
+    val container = LocalContext.current.appContainer
+    val pen = container.pen
+    val settings = container.settings
     val inkTargets = remember(document) {
         PageInkTargets(document.pageSizes, brush = { pen.brush }, onStrokeFinished = viewModel::onStrokeFinished)
     }
@@ -133,13 +146,14 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
                         onTap = { offset ->
                             val third = size.width / 3f
                             when {
+                                !settings.tapEdgesToTurnPages -> chromeVisible = !chromeVisible
                                 offset.x < third -> scope.launch { pagerState.turnPage(-1) }
                                 offset.x > 2 * third -> scope.launch { pagerState.turnPage(+1) }
                                 else -> chromeVisible = !chromeVisible
                             }
                         },
                         onMultiFingerTap = { fingers ->
-                            when (fingers) {
+                            if (settings.multiFingerTapUndo) when (fingers) {
                                 2 -> edit("Undo", viewModel::undo)
                                 3 -> edit("Redo", viewModel::redo)
                             }
@@ -228,6 +242,15 @@ private fun TransientMessage(message: Message?, onDismiss: () -> Unit, modifier:
 private suspend fun PagerState.turnPage(delta: Int) {
     val target = (currentPage + delta).coerceIn(0, pageCount - 1)
     if (target != currentPage) animateScrollToPage(target)
+}
+
+@Composable
+private fun KeepScreenOn(enabled: Boolean) {
+    val view = LocalView.current
+    DisposableEffect(view, enabled) {
+        view.keepScreenOn = enabled
+        onDispose { view.keepScreenOn = false }
+    }
 }
 
 /** Hides the system bars while reading; they come back with a swipe from the edge. */

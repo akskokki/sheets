@@ -24,6 +24,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,7 +42,7 @@ import dev.axu.sheets.R
 import dev.axu.sheets.appContainer
 
 @Composable
-fun LibraryScreen(onOpenSheet: (Sheet) -> Unit) {
+fun LibraryScreen(onOpenSheet: (Sheet) -> Unit, onOpenSettings: () -> Unit) {
     val container = LocalContext.current.appContainer
     val viewModel = viewModel { LibraryViewModel(container.library) }
     val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
@@ -66,6 +67,9 @@ fun LibraryScreen(onOpenSheet: (Sheet) -> Unit) {
                     Spacer(Modifier.width(8.dp))
                     Text("Change folder")
                 }
+            }
+            IconButton(onClick = onOpenSettings) {
+                Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings")
             }
         }
 

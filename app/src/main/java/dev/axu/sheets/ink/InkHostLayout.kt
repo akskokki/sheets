@@ -41,7 +41,12 @@ val LocalInkHost = staticCompositionLocalOf<InkHostLayout> { error("No InkHostLa
  * tell pens, fingers and palms apart.
  */
 @SuppressLint("ViewConstructor")
-class InkHostLayout(context: Context, content: View) : FrameLayout(context) {
+class InkHostLayout(
+    context: Context,
+    content: View,
+    /** Whether to ignore finger touches that are probably the writing hand's palm. */
+    private val ignorePalm: () -> Boolean,
+) : FrameLayout(context) {
     var targetResolver: InkTargetResolver? = null
 
     private val wetInk = InProgressStrokesView(context)
@@ -69,10 +74,10 @@ class InkHostLayout(context: Context, content: View) : FrameLayout(context) {
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
         if (event.isStylus) {
             palmGuard.onStylusEvent(event)
-            if (event.actionMasked == MotionEvent.ACTION_DOWN) cancelFingerGesture()
+            if (event.actionMasked == MotionEvent.ACTION_DOWN && ignorePalm()) cancelFingerGesture()
             if (handleInk(event)) return true
         } else {
-            if (palmGuard.shouldIgnore(event)) return true
+            if (ignorePalm() && palmGuard.shouldIgnore(event)) return true
             fingerGestureActive = event.actionMasked != MotionEvent.ACTION_UP &&
                 event.actionMasked != MotionEvent.ACTION_CANCEL
         }

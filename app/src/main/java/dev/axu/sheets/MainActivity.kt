@@ -18,6 +18,7 @@ import dev.axu.sheets.ink.InkHostLayout
 import dev.axu.sheets.ink.LocalInkHost
 import dev.axu.sheets.library.LibraryScreen
 import dev.axu.sheets.reader.ReaderScreen
+import dev.axu.sheets.settings.SettingsScreen
 import dev.axu.sheets.ui.SheetsTheme
 
 class MainActivity : ComponentActivity() {
@@ -25,7 +26,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         val content = ComposeView(this)
-        val inkHost = InkHostLayout(this, content)
+        val settings = appContainer.settings
+        val inkHost = InkHostLayout(this, content, ignorePalm = { settings.ignorePalm })
         content.setContent {
             CompositionLocalProvider(LocalInkHost provides inkHost) {
                 SheetsTheme {
@@ -37,20 +39,39 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/** The sheet currently open in the reader, or null for the library. */
-private data class OpenSheet(val uri: Uri, val title: String)
+private sealed interface Screen {
+    data object Library : Screen
+    data object Settings : Screen
+    data class Reader(val uri: Uri, val title: String) : Screen
+}
 
-private val OpenSheetSaver = listSaver<OpenSheet?, String>(
-    save = { if (it == null) emptyList() else listOf(it.uri.toString(), it.title) },
-    restore = { if (it.isEmpty()) null else OpenSheet(it[0].toUri(), it[1]) },
+private val ScreenSaver = listSaver<Screen, String>(
+    save = {
+        when (it) {
+            Screen.Library -> listOf("library")
+            Screen.Settings -> listOf("settings")
+            is Screen.Reader -> listOf("reader", it.uri.toString(), it.title)
+        }
+    },
+    restore = {
+        when (it[0]) {
+            "settings" -> Screen.Settings
+            "reader" -> Screen.Reader(it[1].toUri(), it[2])
+            else -> Screen.Library
+        }
+    },
 )
 
 @Composable
 private fun App() {
-    var openSheet by rememberSaveable(stateSaver = OpenSheetSaver) { mutableStateOf(null) }
+    var screen by rememberSaveable(stateSaver = ScreenSaver) { mutableStateOf(Screen.Library) }
 
-    when (val sheet = openSheet) {
-        null -> LibraryScreen(onOpenSheet = { openSheet = OpenSheet(it.uri, it.title) })
-        else -> ReaderScreen(sheet.uri, sheet.title, onBack = { openSheet = null })
+    when (val current = screen) {
+        Screen.Library -> LibraryScreen(
+            onOpenSheet = { screen = Screen.Reader(it.uri, it.title) },
+            onOpenSettings = { screen = Screen.Settings },
+        )
+        Screen.Settings -> SettingsScreen(onBack = { screen = Screen.Library })
+        is Screen.Reader -> ReaderScreen(current.uri, current.title, onBack = { screen = Screen.Library })
     }
 }

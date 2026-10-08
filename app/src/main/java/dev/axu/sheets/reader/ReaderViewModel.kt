@@ -67,7 +67,11 @@ class ReaderViewModel(
 
     fun onStrokeFinished(page: Int, stroke: Stroke) {
         val ready = state as? ReaderState.Ready ?: return
-        val erased = ScratchOut.erasedBy(stroke, ready.ink.strokesOn(page))
+        val erased = if (container.settings.scratchOutToErase) {
+            ScratchOut.erasedBy(stroke, ready.ink.strokesOn(page))
+        } else {
+            emptyList()
+        }
         if (erased.isEmpty()) {
             ready.ink.add(page, stroke)
         } else {
