@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
@@ -47,7 +46,7 @@ fun SettingsScreen(onBack: () -> Unit) {
         Column(
             Modifier
                 .verticalScroll(rememberScrollState())
-                .widthIn(max = 720.dp)
+                .fillMaxWidth()
                 .padding(horizontal = 32.dp),
         ) {
             Section("Pen")
