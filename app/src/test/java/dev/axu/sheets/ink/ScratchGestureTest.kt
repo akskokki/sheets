@@ -1,5 +1,6 @@
 package dev.axu.sheets.ink
 
+import dev.axu.sheets.ink.ScratchGesture.MIN_EXTENT
 import dev.axu.sheets.ink.ScratchGesture.MIN_REVERSALS
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -97,7 +98,7 @@ class ScratchGestureTest {
 
     @Test
     fun tinyJitterIsIgnored() {
-        assertFalse(zigzag(MIN_REVERSALS + 2, swing = 1f, step = 0.2f).matches())
+        assertFalse(zigzag(MIN_REVERSALS + 2, swing = MIN_EXTENT / 4, step = MIN_EXTENT / 20).matches())
     }
 
     @Test

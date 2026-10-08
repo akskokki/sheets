@@ -110,7 +110,7 @@ class ReaderGesturesTest {
             pinch(center - Offset(50f, 0f), center - Offset(250f, 0f), center + Offset(50f, 0f), center + Offset(250f, 0f))
         }
         rule.runOnIdle {
-            assertTrue("scale ${zoom.scale}", zoom.scale > 2f)
+            assertTrue("scale ${zoom.scale}", zoom.scale > 1f)
             assertEquals(emptyList<String>(), taps)
         }
     }

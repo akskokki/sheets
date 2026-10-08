@@ -44,7 +44,7 @@ object ScratchOut {
  */
 object ScratchGesture {
     /** Smallest scratch worth considering, about 1.5 mm. */
-    private const val MIN_EXTENT = 4f
+    internal const val MIN_EXTENT = 4f
     /** Turns needed, i.e. strokes back and forth minus one. */
     internal const val MIN_REVERSALS = 6
     /** Swings shorter than this fraction of the scratch's extent are jitter, not reversals. */
