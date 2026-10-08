@@ -23,7 +23,9 @@ sealed interface ReaderState {
         val document: PdfDocument,
         val pages: PageBitmapCache,
         val ink: DocumentInk,
-        val annotationKey: String,
+        /** Identifies the document's contents; see [dev.axu.sheets.annotations.AnnotationStore]. */
+        val documentKey: String,
+        val initialPage: Int,
     ) : ReaderState
 }
 
@@ -52,7 +54,8 @@ class ReaderViewModel(
         try {
             val key = container.annotations.keyOf(uri)
             val ink = DocumentInk(container.annotations.load(key))
-            return ReaderState.Ready(document, PageBitmapCache(document), ink, key)
+            val page = container.positions.pageOf(key).coerceIn(0, document.pageCount - 1)
+            return ReaderState.Ready(document, PageBitmapCache(document), ink, key, page)
         } catch (e: Exception) {
             document.close()
             throw e
@@ -90,8 +93,13 @@ class ReaderViewModel(
         return ready.ink.redo()?.also { save(ready) }
     }
 
+    fun onPageSettled(page: Int) {
+        val ready = state as? ReaderState.Ready ?: return
+        container.positions.save(ready.documentKey, page)
+    }
+
     private fun save(ready: ReaderState.Ready) =
-        container.annotations.save(ready.annotationKey, ready.ink.toPageStrokes())
+        container.annotations.save(ready.documentKey, ready.ink.toPageStrokes())
 
     override fun onCleared() {
         val ready = state as? ReaderState.Ready ?: return

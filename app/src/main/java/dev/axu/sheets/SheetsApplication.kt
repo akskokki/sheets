@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import dev.axu.sheets.annotations.AnnotationStore
 import dev.axu.sheets.library.LibraryRepository
+import dev.axu.sheets.reader.ReadingPositions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -25,6 +26,7 @@ class AppContainer(context: Context) {
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val contentResolver = context.contentResolver
     val library = LibraryRepository(context)
+    val positions = ReadingPositions(context)
     val annotations = AnnotationStore(contentResolver, File(context.filesDir, "annotations"), appScope)
 }
 

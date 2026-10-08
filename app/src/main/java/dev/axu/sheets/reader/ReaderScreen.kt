@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -76,7 +77,7 @@ fun ReaderScreen(uri: Uri, title: String, onBack: () -> Unit) {
 private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: String, onBack: () -> Unit) {
     val document = state.document
     val ink = state.ink
-    val pagerState = rememberPagerState { document.pageCount }
+    val pagerState = rememberPagerState(initialPage = state.initialPage) { document.pageCount }
     var chromeVisible by rememberSaveable { mutableStateOf(true) }
     var message by remember { mutableStateOf<Message?>(null) }
     val scope = rememberCoroutineScope()
@@ -85,6 +86,10 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
     val inkTargets = remember(document) {
         PageInkTargets(document.pageSizes, brush = { Pens.Default }, onStrokeFinished = viewModel::onStrokeFinished)
     }
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.settledPage }.collect(viewModel::onPageSettled)
+    }
+
     val inkHost = LocalInkHost.current
     DisposableEffect(inkHost, inkTargets) {
         inkHost.targetResolver = inkTargets
