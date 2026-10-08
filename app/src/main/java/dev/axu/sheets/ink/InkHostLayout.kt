@@ -7,6 +7,7 @@ import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.ink.authoring.InProgressStrokeId
 import androidx.ink.authoring.InProgressStrokesFinishedListener
@@ -64,6 +65,8 @@ class InkHostLayout(
                 override fun onStrokesFinished(strokes: Map<InProgressStrokeId, Stroke>) {
                     // The targets must start drawing these in this same frame to avoid flicker.
                     for ((id, stroke) in strokes) targets.remove(id)?.onStrokeFinished?.invoke(stroke)
+                    // Compose would only see the new strokes, and redraw, a frame later.
+                    Snapshot.sendApplyNotifications()
                     wetInk.removeFinishedStrokes(strokes.keys)
                 }
             },
