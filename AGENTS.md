@@ -48,6 +48,9 @@ any compiler or lint warning: fix warnings, or suppress one at its narrowest sco
 saying why. With `-q`, Gradle prints nothing on success. Test failures are in
 `app/build/test-results/` and `app/build/outputs/androidTest-results/` (XML).
 
+On every push, CI (`.github/workflows/ci.yml`) runs `check`, a release build, and the device tests
+on a tablet emulator.
+
 Then check anything visible or touch-related in Sheets Dev on the device, using screenshots, and
 screen recordings for timing. Judge performance and latency on a release build. A change is done
 when all of the above pass and it's been seen working.
