@@ -29,7 +29,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import dev.axu.sheets.pdf.PageRenderer
-import dev.axu.sheets.pdf.PageSize
+import dev.axu.sheets.pdf.size
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.roundToInt
@@ -71,7 +71,7 @@ fun PdfPage(
         contentAlignment = Alignment.Center,
     ) {
         val viewport = IntSize(constraints.maxWidth, constraints.maxHeight)
-        val fitScale = PageSize(crop.width(), crop.height()).scaleToFit(viewport.width.toFloat(), viewport.height.toFloat())
+        val fitScale = crop.size.scaleToFit(viewport.width.toFloat(), viewport.height.toFloat())
         val fitted = IntSize((crop.width() * fitScale).roundToInt(), (crop.height() * fitScale).roundToInt())
 
         // produceState keeps its value when the keys change (e.g. on rotation), so the previous

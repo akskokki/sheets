@@ -50,7 +50,7 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.axu.sheets.appContainer
 import dev.axu.sheets.ink.LocalInkHost
-import dev.axu.sheets.pdf.PageSize
+import dev.axu.sheets.pdf.size
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -205,10 +205,7 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
         // Prefer the margin beside the pages (landscape), so the toolbar never covers the music.
         // Pages are cropped differently, so go by the widest to keep the toolbar put while paging.
         val widestPage = remember(state.crops, constraints) {
-            state.crops.maxOf {
-                val size = PageSize(it.width(), it.height())
-                size.width * size.scaleToFit(constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat())
-            }
+            state.crops.maxOf { it.width() * it.size.scaleToFit(constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat()) }
         }
         val useRail = (maxWidth - with(LocalDensity.current) { widestPage.toDp() }) / 2 >= ToolbarRailWidth
         val toolbarModifier = Modifier.onGloballyPositioned { inkTargets.onExclusionPositioned(ToolbarKey, it) }

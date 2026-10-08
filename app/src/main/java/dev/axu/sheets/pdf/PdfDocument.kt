@@ -23,6 +23,8 @@ data class PageSize(val width: Float, val height: Float) {
     fun toRect() = RectF(0f, 0f, width, height)
 }
 
+val RectF.size get() = PageSize(width(), height())
+
 /**
  * A read-only PDF backed by the platform [PdfRenderer].
  *
