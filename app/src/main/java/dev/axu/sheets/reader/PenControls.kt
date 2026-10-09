@@ -1,12 +1,14 @@
 package dev.axu.sheets.reader
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +26,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -52,6 +55,7 @@ import dev.axu.sheets.ink.Pen
 import dev.axu.sheets.ink.PenSettings
 import dev.axu.sheets.ink.PenWidth
 import dev.axu.sheets.ink.Pens
+import kotlinx.coroutines.launch
 
 /**
  * The toolbar's drawing tools: the pen, optionally the ones used before it to switch back to, and
@@ -174,8 +178,8 @@ private fun EraserButton(selected: Boolean, onClick: () -> Unit) {
 }
 
 /**
- * Every button among the drawing tools, so that they all look and respond alike. Nothing animates:
- * the selected tool stands out, switching over instantly, and a press shows only while held.
+ * Every button among the drawing tools, so that they all look and respond alike: the selected tool
+ * stands out, switching over instantly, and a press lights up at once and fades briefly on release.
  *
  * What a press does is up to [gesture], which reports the presses that deserve feedback to the
  * interaction source it's given, rather than showing any of its own. Switching tools doesn't: the
@@ -191,7 +195,18 @@ private fun ToolButton(
     content: @Composable () -> Unit,
 ) {
     val interactions = remember { MutableInteractionSource() }
-    val pressed by interactions.collectIsPressedAsState()
+    val press = remember { Animatable(0f) }
+    LaunchedEffect(interactions) {
+        // Straight from the interactions, so a quick tap that ends within a frame still shows.
+        interactions.interactions.collect { interaction ->
+            when (interaction) {
+                is PressInteraction.Press -> press.snapTo(1f)
+
+                is PressInteraction.Release, is PressInteraction.Cancel ->
+                    launch { press.animateTo(0f, tween(PRESS_FADE_MILLIS)) }
+            }
+        }
+    }
     Box(
         modifier
             .drawBehind {
@@ -200,7 +215,7 @@ private fun ToolButton(
                     drawRoundRect(SelectedEdgeColor, Offset(0f, SelectedEdgeOffset.toPx()), size, corners)
                     drawRoundRect(Color.White, cornerRadius = corners)
                 }
-                if (pressed) drawRoundRect(PressedColor, cornerRadius = corners)
+                if (press.value > 0f) drawRoundRect(PressedColor, cornerRadius = corners, alpha = press.value)
             }
             .gesture(interactions)
             .semantics {
@@ -221,6 +236,7 @@ private val ToolShape = RoundedCornerShape(50)
 private val SelectedEdgeColor = Color(0x2E000000)
 private val SelectedEdgeOffset = 1.dp
 private val PressedColor = Color(0x1A000000)
+private const val PRESS_FADE_MILLIS = 120
 
 /** Color swatches above width choices. */
 @Composable
