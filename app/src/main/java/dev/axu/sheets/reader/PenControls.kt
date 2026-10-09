@@ -2,17 +2,18 @@ package dev.axu.sheets.reader
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.AnimationVector4D
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,10 +31,15 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +48,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.Path
@@ -49,6 +56,9 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -65,7 +75,8 @@ import dev.axu.sheets.ink.Pens
 import dev.axu.sheets.ink.RecentPens
 import dev.axu.sheets.ink.RecentPens.Arriving
 import dev.axu.sheets.ink.RecentPens.Leaving
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filterNotNull
 
 /**
  * The toolbar's drawing tools: the pen, optionally the ones used before it to switch back to, and
@@ -104,19 +115,52 @@ fun DrawingTools(
     }
 }
 
-/** Tools on a shared background. */
+/** Tools on a shared background, the selected one on a chip that slides over to the next one chosen. */
 @Composable
 private fun ToolGroup(vertical: Boolean, content: @Composable () -> Unit) {
+    val selection = remember { ToolSelection() }
+    val chip = remember { mutableStateOf<Animatable<Rect, AnimationVector4D>?>(null) }
+    LaunchedEffect(selection) {
+        snapshotFlow { selection.target }.filterNotNull().collectLatest { target ->
+            // Where the toolbar first appears, the chip is already in place.
+            val current =
+                chip.value ?: return@collectLatest run { chip.value = Animatable(target, Rect.VectorConverter) }
+            current.animateTo(target, tween(SELECT_MILLIS, easing = SelectEasing))
+        }
+    }
     val modifier = Modifier
         .clip(RoundedCornerShape(50))
         .background(ToolGroupColor)
+        .onPlaced { selection.group = it }
+        .drawBehind {
+            val rect = chip.value?.value ?: selection.target ?: return@drawBehind
+            val corners = CornerRadius(rect.minDimension / 2)
+            drawRoundRect(SelectedEdgeColor, rect.topLeft + Offset(0f, SelectedEdgeOffset.toPx()), rect.size, corners)
+            drawRoundRect(Color.White, rect.topLeft, rect.size, corners)
+        }
         .padding(4.dp)
-    if (vertical) {
-        Column(modifier, Arrangement.spacedBy(ToolSpacing), Alignment.CenterHorizontally) { content() }
-    } else {
-        Row(modifier, Arrangement.spacedBy(ToolSpacing), Alignment.CenterVertically) { content() }
+    CompositionLocalProvider(LocalToolSelection provides selection) {
+        if (vertical) {
+            Column(modifier, Arrangement.spacedBy(ToolSpacing), Alignment.CenterHorizontally) { content() }
+        } else {
+            Row(modifier, Arrangement.spacedBy(ToolSpacing), Alignment.CenterVertically) { content() }
+        }
     }
 }
+
+/** Where in its [ToolGroup] the selected tool is. */
+private class ToolSelection {
+    var group: LayoutCoordinates? = null
+    var target: Rect? by mutableStateOf(null)
+        private set
+
+    fun moveTo(tool: LayoutCoordinates) {
+        val group = group?.takeIf { it.isAttached } ?: return
+        if (tool.isAttached) target = group.localBoundingBoxOf(tool, clipBounds = false)
+    }
+}
+
+private val LocalToolSelection = staticCompositionLocalOf<ToolSelection?> { null }
 
 /**
  * The pen in use, drawn as a short line; tapping it opens [menu] to change its color and width. While
@@ -147,9 +191,7 @@ private fun PenButton(
     ToolButton(
         selected,
         description = "Pen: ${pen.color.name}, ${pen.width.name}",
-        gesture = { interactions ->
-            opensPenMenu(menu, interactions, isSelected = { isSelected }, onSelect = { select() })
-        },
+        gesture = Modifier.opensPenMenu(menu, isSelected = { isSelected }, onSelect = { select() }),
         modifier = if (vertical) Modifier.size(48.dp, 56.dp) else Modifier.height(44.dp),
     ) {
         if (vertical) {
@@ -174,7 +216,7 @@ private fun RecentPenButton(
     ToolButton(
         selected = false,
         description = "Switch to ${pen.color.name}, ${pen.width.name}",
-        gesture = { toolClick(onClick) },
+        gesture = Modifier.toolClick(onClick),
         modifier = Modifier.size(RecentPenSize),
     ) {
         val line = Modifier.size(32.dp, 20.dp)
@@ -264,7 +306,7 @@ private fun EraserButton(selected: Boolean, onClick: () -> Unit) {
     ToolButton(
         selected,
         description = "Eraser",
-        gesture = { toolClick(onClick) },
+        gesture = Modifier.toolClick(onClick),
         modifier = Modifier.size(44.dp),
     ) {
         Icon(painterResource(R.drawable.ic_eraser), contentDescription = null, Modifier.size(22.dp))
@@ -273,45 +315,32 @@ private fun EraserButton(selected: Boolean, onClick: () -> Unit) {
 
 /**
  * Every button among the drawing tools, so that they all look and respond alike: the selected tool
- * stands out, switching over instantly, and a press lights up at once and fades briefly on release.
+ * sits on its group's chip, and a press shows nothing, as switching tools is the response.
  *
- * What a press does is up to [gesture], which reports the presses that deserve feedback to the
- * interaction source it's given, rather than showing any of its own. Switching tools doesn't: the
- * switch is the response. The gesture mustn't depend on whether the tool is selected, so a press
- * that selects it is still handled by the same gesture when it ends.
+ * What a press does is up to [gesture]. It mustn't depend on whether the tool is selected, so a
+ * press that selects it is still handled by the same gesture when it ends.
  */
 @Composable
 private fun ToolButton(
     selected: Boolean,
     description: String,
-    gesture: Modifier.(MutableInteractionSource) -> Modifier,
-    modifier: Modifier = Modifier,
+    modifier: Modifier,
+    gesture: Modifier,
     content: @Composable () -> Unit,
 ) {
-    val interactions = remember { MutableInteractionSource() }
-    val press = remember { Animatable(0f) }
-    LaunchedEffect(interactions) {
-        // Straight from the interactions, so a quick tap that ends within a frame still shows.
-        interactions.interactions.collect { interaction ->
-            when (interaction) {
-                is PressInteraction.Press -> press.snapTo(1f)
-
-                is PressInteraction.Release, is PressInteraction.Cancel ->
-                    launch { press.animateTo(0f, tween(PRESS_FADE_MILLIS)) }
-            }
-        }
+    val selection = LocalToolSelection.current
+    val isSelected by rememberUpdatedState(selected)
+    var placed by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    LaunchedEffect(selected) {
+        if (selected) placed?.let { selection?.moveTo(it) }
     }
     Box(
         modifier
-            .drawBehind {
-                val corners = CornerRadius(size.minDimension / 2)
-                if (selected) {
-                    drawRoundRect(SelectedEdgeColor, Offset(0f, SelectedEdgeOffset.toPx()), size, corners)
-                    drawRoundRect(Color.White, cornerRadius = corners)
-                }
-                if (press.value > 0f) drawRoundRect(PressedColor, cornerRadius = corners, alpha = press.value)
+            .onGloballyPositioned {
+                placed = it
+                if (isSelected) selection?.moveTo(it)
             }
-            .gesture(interactions)
+            .then(gesture)
             .semantics {
                 contentDescription = description
                 this.selected = selected
@@ -329,8 +358,10 @@ private fun Modifier.toolClick(onClick: () -> Unit): Modifier =
 private val ToolShape = RoundedCornerShape(50)
 private val SelectedEdgeColor = Color(0x2E000000)
 private val SelectedEdgeOffset = 1.dp
-private val PressedColor = Color(0x1A000000)
-private const val PRESS_FADE_MILLIS = 120
+
+// Designed to be seen with Android's animation speed at 0.5x, which halves it.
+private const val SELECT_MILLIS = 320
+private val SelectEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
 /** Color swatches above width choices. */
 @Composable

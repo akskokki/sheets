@@ -10,8 +10,6 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -97,26 +95,21 @@ class PenMenuState(private val onOpen: () -> Unit = {}, private val onClose: () 
 /**
  * Makes this the pen button: pressing it opens the menu, and pressing it again closes it. Pressing
  * and dragging into the menu picks the choice lifted over, leaving the menu open for more. While the
- * pen isn't [isSelected], a tap only calls [onSelect]. Presses that work the menu are reported to
- * [interactions]; one that only switches back to the pen isn't, as switching tools is its own response.
+ * pen isn't [isSelected], a tap only calls [onSelect].
  */
 fun Modifier.opensPenMenu(
     menu: PenMenuState,
-    interactions: MutableInteractionSource? = null,
     isSelected: () -> Boolean = { true },
     onSelect: () -> Unit = {},
 ): Modifier = this
     .onGloballyPositioned { menu.anchor = it.boundsInRoot() }
-    .pointerInput(menu, interactions) {
+    .pointerInput(menu) {
         awaitEachGesture {
             val down = awaitFirstDown()
             val selected = isSelected()
-            val press = if (selected) PressInteraction.Press(down.position) else null
-            press?.let { interactions?.tryEmit(it) }
             val wasOpen = menu.isOpen
             if (selected) menu.open()
             var dragging = false
-            var lifted = false
             try {
                 while (true) {
                     val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
@@ -127,7 +120,6 @@ fun Modifier.opensPenMenu(
                         if (selected) menu.onDrag(point.takeIf { dragging })
                         continue
                     }
-                    lifted = true
                     when {
                         !selected -> if (!dragging) onSelect()
                         dragging -> menu.onLift(point)
@@ -137,9 +129,6 @@ fun Modifier.opensPenMenu(
                 }
             } finally {
                 menu.onDrag(null)
-                press?.let {
-                    interactions?.tryEmit(if (lifted) PressInteraction.Release(it) else PressInteraction.Cancel(it))
-                }
             }
         }
     }
