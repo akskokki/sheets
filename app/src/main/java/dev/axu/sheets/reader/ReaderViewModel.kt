@@ -54,7 +54,7 @@ class ReaderViewModel(private val uri: Uri, private val container: AppContainer)
         val document = PdfDocument.open(container.contentResolver, uri)
         try {
             val key = container.annotations.keyOf(uri)
-            val ink = container.inkSessions.open(key)
+            val ink = DocumentInk(container.annotations.load(key))
             val crops = if (container.settings.cropMargins) {
                 container.crops.of(document, key, ink)
             } else {

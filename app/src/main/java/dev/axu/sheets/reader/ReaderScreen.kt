@@ -160,7 +160,7 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
         }
     }
 
-    /** Undo or redo on the page in view, so the change is never out of sight. */
+    /** Undo or redo on the page in view; each page has its own history. */
     fun edit(name: String, action: (page: Int) -> Boolean) {
         val done = action(pagerState.currentPage)
         message = Message(if (done) name else "Nothing to ${name.lowercase()}")

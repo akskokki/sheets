@@ -40,9 +40,6 @@ class AnnotationStore(
      */
     private val readOnly = HashSet<String>()
 
-    /** The save time of the newest copy this app has loaded or saved, per document. Only touched on [io]. */
-    private val newestKnown = HashMap<String, Long>()
-
     private val stores get() = listOfNotNull(local, folder)
 
     init {
@@ -86,31 +83,16 @@ class AnnotationStore(
                 val stale = copies.none { it.store === store && it.savedAtMillis >= copy.savedAtMillis }
                 if (stale) writeSafely(store, key, copy.bytes)
             }
-            newestKnown[key] = copy.savedAtMillis
             return@withContext saved
         }
-        newestKnown[key] = Long.MIN_VALUE
         Annotations.Empty
-    }
-
-    /**
-     * Whether a copy of [key] newer than any this app has loaded or saved has turned up, for
-     * example in a newly picked notes folder. Waits for earlier saves, so the app's own never count.
-     */
-    suspend fun changedElsewhere(key: String): Boolean = withContext(io) {
-        val known = newestKnown[key] ?: return@withContext true
-        stores.any { store -> readCopy(store, key).let { it != null && it.savedAtMillis > known } }
     }
 
     /** Saves in the background; the write completes even if the caller goes away. */
     fun save(key: String, annotations: Annotations) {
         scope.launch(io) {
-            val savedAtMillis = System.currentTimeMillis()
-            // Even if writing fails, the caller holds these notes, so a copy older than them
-            // mustn't count as changed elsewhere.
-            newestKnown[key] = maxOf(newestKnown[key] ?: Long.MIN_VALUE, savedAtMillis)
             val bytes = ByteArrayOutputStream()
-                .also { AnnotationCodec.encode(annotations, savedAtMillis, it) }
+                .also { AnnotationCodec.encode(annotations, System.currentTimeMillis(), it) }
                 .toByteArray()
             for (store in stores) writeSafely(store, key, bytes)
         }

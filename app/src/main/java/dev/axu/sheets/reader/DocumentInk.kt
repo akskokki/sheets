@@ -1,6 +1,5 @@
 package dev.axu.sheets.reader
 
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.ink.strokes.Stroke
 import dev.axu.sheets.annotations.Annotations
@@ -11,9 +10,8 @@ import java.util.IdentityHashMap
  * The finished ink strokes of one document, per page, in page coordinates (PDF points), with an
  * undo/redo history for each page.
  *
- * The history holds only this session's edits, so strokes from earlier sessions can't be undone,
- * though undoing this session's erasing brings them back. See [InkSessions] for how long a session
- * lasts.
+ * The history holds only edits made since the document was opened, so strokes saved before can't
+ * be undone, though undoing an erase brings them back.
  *
  * Backed by snapshot state so changes show up in the same frame they're made; the wet-to-dry ink
  * handoff relies on that to avoid flicker.

@@ -16,7 +16,7 @@ class DocumentInkTest {
     private val c = testStroke(30f, 30f)
 
     @Test
-    fun strokesFromEarlierSessionsCantBeUndone() {
+    fun strokesSavedBeforeOpeningCantBeUndone() {
         val ink = DocumentInk(Annotations(mapOf(0 to listOf(a)), listOf(a)))
         assertFalse(ink.canUndo(0))
         assertFalse(ink.undo(0))
@@ -57,7 +57,7 @@ class DocumentInkTest {
 
     @Test
     fun undoingAnEraseRestoresStrokesAndTheirOrder() {
-        // Saved strokes, so erasing notes from an earlier session can be undone too.
+        // Saved strokes, so erasing notes saved before opening can be undone too.
         val ink = DocumentInk(Annotations(mapOf(0 to listOf(a, b, c)), listOf(a, b, c)))
         ink.erase(0, listOf(b))
         assertEquals(listOf(a, c), ink.strokesOn(0))
