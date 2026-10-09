@@ -18,20 +18,8 @@ import java.io.DataOutputStream
 
 @RunWith(AndroidJUnit4::class)
 class AnnotationStoreTest {
-    private class MemoryFiles : AnnotationFiles {
-        val files = HashMap<String, ByteArray>()
-        override fun read(key: String) = files[key]
-        override fun write(key: String, bytes: ByteArray) {
-            files[key] = bytes
-        }
-        override fun keys() = files.keys.toSet()
-        override fun moveAside(key: String) {
-            files.remove(key)
-        }
-    }
-
     private val scope = CoroutineScope(SupervisorJob())
-    private val local = MemoryFiles()
+    private val local = MemoryAnnotationFiles()
     private val store = AnnotationStore(
         InstrumentationRegistry.getInstrumentation().targetContext.contentResolver,
         local,

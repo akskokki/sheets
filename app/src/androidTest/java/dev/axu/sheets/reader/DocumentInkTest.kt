@@ -5,7 +5,6 @@ import dev.axu.sheets.annotations.Annotations
 import dev.axu.sheets.testStroke
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -17,14 +16,33 @@ class DocumentInkTest {
     private val c = testStroke(30f, 30f)
 
     @Test
-    fun undoStepsBackThroughSavedStrokesInDrawingOrder() {
-        // b on page 1 was drawn last, even though page 0 comes first.
-        val ink = DocumentInk(Annotations(mapOf(0 to listOf(a), 1 to listOf(b)), listOf(a, b)))
-        assertTrue(ink.canUndo)
-        assertEquals(1, ink.undo())
-        assertEquals(0, ink.undo())
-        assertNull(ink.undo())
-        assertTrue(ink.strokesOn(0).isEmpty() && ink.strokesOn(1).isEmpty())
+    fun strokesFromEarlierSessionsCantBeUndone() {
+        val ink = DocumentInk(Annotations(mapOf(0 to listOf(a)), listOf(a)))
+        assertFalse(ink.canUndo(0))
+        assertFalse(ink.undo(0))
+
+        ink.add(0, b)
+        assertTrue(ink.undo(0))
+        assertFalse(ink.undo(0))
+        assertEquals(listOf(a), ink.strokesOn(0))
+    }
+
+    @Test
+    fun undoAndRedoOnlyTouchTheirOwnPage() {
+        val ink = DocumentInk(Annotations.Empty)
+        ink.add(0, a)
+        ink.add(1, b)
+
+        assertTrue(ink.undo(0))
+        assertEquals(listOf(b), ink.strokesOn(1))
+        assertFalse(ink.undo(0))
+        assertFalse(ink.canRedo(1))
+
+        // A new edit on another page leaves this page's redo alone.
+        ink.add(1, c)
+        assertTrue(ink.redo(0))
+        assertEquals(listOf(a), ink.strokesOn(0))
+        assertEquals(listOf(b, c), ink.strokesOn(1))
     }
 
     @Test
@@ -34,20 +52,18 @@ class DocumentInkTest {
         ink.add(0, c)
         val saved = ink.toAnnotations()
         assertEquals(listOf(a, b, c), saved.drawingOrder)
-
-        val reloaded = DocumentInk(saved)
-        assertEquals(0, reloaded.undo())
-        assertEquals(listOf(a), reloaded.strokesOn(0))
+        assertEquals(listOf(a, b, c), DocumentInk(saved).toAnnotations().drawingOrder)
     }
 
     @Test
     fun undoingAnEraseRestoresStrokesAndTheirOrder() {
+        // Saved strokes, so erasing notes from an earlier session can be undone too.
         val ink = DocumentInk(Annotations(mapOf(0 to listOf(a, b, c)), listOf(a, b, c)))
         ink.erase(0, listOf(b))
         assertEquals(listOf(a, c), ink.strokesOn(0))
         assertEquals(listOf(a, c), ink.toAnnotations().drawingOrder)
 
-        assertEquals(0, ink.undo())
+        assertTrue(ink.undo(0))
         assertEquals(listOf(a, b, c), ink.strokesOn(0))
         assertEquals(listOf(a, b, c), ink.toAnnotations().drawingOrder)
     }
@@ -60,9 +76,9 @@ class DocumentInkTest {
         eraser.erase(listOf(a))
         assertEquals(listOf(b), ink.strokesOn(0))
 
-        assertEquals(0, ink.undo())
+        assertTrue(ink.undo(0))
         assertEquals(listOf(a, b, c), ink.strokesOn(0))
-        assertEquals(0, ink.redo())
+        assertTrue(ink.redo(0))
         assertEquals(listOf(b), ink.strokesOn(0))
     }
 
@@ -70,10 +86,10 @@ class DocumentInkTest {
     fun redoIsClearedByNewEdits() {
         val ink = DocumentInk(Annotations.Empty)
         ink.add(0, a)
-        ink.undo()
-        assertTrue(ink.canRedo)
+        ink.undo(0)
+        assertTrue(ink.canRedo(0))
         ink.add(0, b)
-        assertFalse(ink.canRedo)
+        assertFalse(ink.canRedo(0))
         assertEquals(listOf(b), ink.toAnnotations().drawingOrder)
     }
 }

@@ -6,6 +6,7 @@ import dev.axu.sheets.annotations.AnnotationStore
 import dev.axu.sheets.annotations.LocalAnnotationFiles
 import dev.axu.sheets.ink.PenSettings
 import dev.axu.sheets.library.LibraryRepository
+import dev.axu.sheets.reader.InkSessions
 import dev.axu.sheets.reader.PageCrops
 import dev.axu.sheets.reader.ReadingPositions
 import dev.axu.sheets.settings.Settings
@@ -40,6 +41,7 @@ class AppContainer(context: Context) {
         notesFolder = library.notesFolder,
         scope = appScope,
     )
+    val inkSessions = InkSessions(annotations)
 }
 
 val Context.appContainer: AppContainer

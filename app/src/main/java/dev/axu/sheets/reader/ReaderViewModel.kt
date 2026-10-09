@@ -54,7 +54,7 @@ class ReaderViewModel(private val uri: Uri, private val container: AppContainer)
         val document = PdfDocument.open(container.contentResolver, uri)
         try {
             val key = container.annotations.keyOf(uri)
-            val ink = DocumentInk(container.annotations.load(key))
+            val ink = container.inkSessions.open(key)
             val crops = if (container.settings.cropMargins) {
                 container.crops.of(document, key, ink)
             } else {
@@ -120,16 +120,16 @@ class ReaderViewModel(private val uri: Uri, private val container: AppContainer)
         erasures -= erasure
     }
 
-    /** Returns the page of the undone edit, or null if there was nothing to undo. */
-    fun undo(): Int? {
-        val ready = state as? ReaderState.Ready ?: return null
-        return ready.ink.undo()?.also { save(ready) }
+    /** Undoes the latest edit on [page]; returns false if there was nothing to undo. */
+    fun undo(page: Int): Boolean {
+        val ready = state as? ReaderState.Ready ?: return false
+        return ready.ink.undo(page).also { if (it) save(ready) }
     }
 
-    /** Returns the page of the redone edit, or null if there was nothing to redo. */
-    fun redo(): Int? {
-        val ready = state as? ReaderState.Ready ?: return null
-        return ready.ink.redo()?.also { save(ready) }
+    /** Redoes the latest undone edit on [page]; returns false if there was nothing to redo. */
+    fun redo(page: Int): Boolean {
+        val ready = state as? ReaderState.Ready ?: return false
+        return ready.ink.redo(page).also { if (it) save(ready) }
     }
 
     fun onPageSettled(page: Int) {

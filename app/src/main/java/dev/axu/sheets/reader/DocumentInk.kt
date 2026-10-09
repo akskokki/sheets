@@ -9,10 +9,11 @@ import java.util.IdentityHashMap
 
 /**
  * The finished ink strokes of one document, per page, in page coordinates (PDF points), with an
- * undo/redo history.
+ * undo/redo history for each page.
  *
- * The history starts out as every saved stroke in the order it was drawn, so undo can step back
- * through earlier sessions too; erasing and redo are only remembered for this session.
+ * The history holds only this session's edits, so strokes from earlier sessions can't be undone,
+ * though undoing this session's erasing brings them back. See [InkSessions] for how long a session
+ * lasts.
  *
  * Backed by snapshot state so changes show up in the same frame they're made; the wet-to-dry ink
  * handoff relies on that to avoid flicker.
@@ -28,22 +29,21 @@ class DocumentInk(saved: Annotations) {
     }
 
     private val pages = mutableStateMapOf<Int, List<Stroke>>().apply { putAll(saved.pages) }
-    private val undoStack = mutableStateListOf<Edit>().apply {
-        val pageOf = IdentityHashMap<Stroke, Int>()
-        for ((page, strokes) in saved.pages) for (stroke in strokes) pageOf[stroke] = page
-        for (stroke in saved.drawingOrder) pageOf[stroke]?.let { page -> add(Edit.Add(page, stroke)) }
-    }
-    private val redoStack = mutableStateListOf<Edit>()
 
-    val canUndo: Boolean get() = undoStack.isNotEmpty()
-    val canRedo: Boolean get() = redoStack.isNotEmpty()
+    /** Strokes in the order they were drawn, including erased ones, which undo may bring back. */
+    private val drawingOrder = saved.drawingOrder.toMutableList()
+    private val undoStacks = mutableStateMapOf<Int, List<Edit>>()
+    private val redoStacks = mutableStateMapOf<Int, List<Edit>>()
+
+    fun canUndo(page: Int): Boolean = !undoStacks[page].isNullOrEmpty()
+    fun canRedo(page: Int): Boolean = !redoStacks[page].isNullOrEmpty()
 
     fun toAnnotations(): Annotations {
         val present = Collections.newSetFromMap(IdentityHashMap<Stroke, Boolean>())
         for (strokes in pages.values) present.addAll(strokes)
-        // Strokes still on the pages, in the order their additions happened; anything without a
-        // recorded addition (there shouldn't be any) goes first.
-        val ordered = undoStack.filterIsInstance<Edit.Add>().map { it.stroke }.filter { it in present }
+        // Strokes still on the pages, in drawing order; anything without a recorded place (from
+        // files that predate drawing order) goes first.
+        val ordered = drawingOrder.filter { it in present }
         val unordered = present - ordered.toSet()
         return Annotations(pages.toMap(), unordered.toList() + ordered)
     }
@@ -69,8 +69,8 @@ class DocumentInk(saved: Annotations) {
         fun erase(strokes: Collection<Stroke>) {
             val previous = edit
             // Grow the gesture's edit while it's the latest, rather than adding one per stroke.
-            val all = if (previous != null && undoStack.lastOrNull() === previous) {
-                undoStack.removeAt(undoStack.lastIndex)
+            val all = if (previous != null && undoStacks[page]?.lastOrNull() === previous) {
+                undoStacks.pop(page)
                 revert(previous)
                 previous.strokes.map { it.value } + strokes
             } else {
@@ -82,32 +82,46 @@ class DocumentInk(saved: Annotations) {
         }
     }
 
-    /** Reverts the most recent edit; returns the page it was on, or null if there was nothing to undo. */
-    fun undo(): Int? {
-        val edit = undoStack.removeLastOrNull() ?: return null
+    /** Reverts the most recent edit on [page]; returns false if there was nothing to undo. */
+    fun undo(page: Int): Boolean {
+        val edit = undoStacks.pop(page) ?: return false
         revert(edit)
-        redoStack += edit
-        return edit.page
+        redoStacks.push(edit)
+        return true
     }
 
-    /** Reapplies the most recently undone edit; returns its page, or null if there was nothing to redo. */
-    fun redo(): Int? {
-        val edit = redoStack.removeLastOrNull() ?: return null
+    /** Reapplies the most recently undone edit on [page]; returns false if there was nothing to redo. */
+    fun redo(page: Int): Boolean {
+        val edit = redoStacks.pop(page) ?: return false
         apply(edit)
-        undoStack += edit
-        return edit.page
+        undoStacks.push(edit)
+        return true
     }
 
     private fun perform(edit: Edit) {
         apply(edit)
-        undoStack += edit
-        redoStack.clear()
+        undoStacks.push(edit)
+        redoStacks.remove(edit.page)
+    }
+
+    private fun MutableMap<Int, List<Edit>>.push(edit: Edit) {
+        this[edit.page] = this[edit.page].orEmpty() + edit
+    }
+
+    private fun MutableMap<Int, List<Edit>>.pop(page: Int): Edit? {
+        val stack = this[page] ?: return null
+        val edit = stack.lastOrNull() ?: return null
+        this[page] = stack.dropLast(1)
+        return edit
     }
 
     private fun apply(edit: Edit) {
         val strokes = strokesOn(edit.page)
         pages[edit.page] = when (edit) {
-            is Edit.Add -> strokes + edit.stroke
+            is Edit.Add -> {
+                drawingOrder += edit.stroke
+                strokes + edit.stroke
+            }
 
             is Edit.Erase -> {
                 val erased = edit.strokes.mapTo(HashSet()) { it.value }
@@ -119,7 +133,10 @@ class DocumentInk(saved: Annotations) {
     private fun revert(edit: Edit) {
         val strokes = strokesOn(edit.page)
         pages[edit.page] = when (edit) {
-            is Edit.Add -> strokes - edit.stroke
+            is Edit.Add -> {
+                drawingOrder.removeAt(drawingOrder.lastIndexOf(edit.stroke))
+                strokes - edit.stroke
+            }
 
             // Ascending order makes each original index valid again by the time it's inserted.
             is Edit.Erase -> strokes.toMutableList().apply {

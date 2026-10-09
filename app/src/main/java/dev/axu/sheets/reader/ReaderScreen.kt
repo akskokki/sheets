@@ -160,11 +160,10 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
         }
     }
 
-    /** Undo or redo, bringing the affected page into view so the change is never invisible. */
-    fun edit(name: String, action: () -> Int?) {
-        val page = action()
-        message = Message(if (page == null) "Nothing to ${name.lowercase()}" else name)
-        if (page != null && page != pagerState.currentPage) scope.launch { pagerState.animateScrollToPage(page) }
+    /** Undo or redo on the page in view, so the change is never out of sight. */
+    fun edit(name: String, action: (page: Int) -> Boolean) {
+        val done = action(pagerState.currentPage)
+        message = Message(if (done) name else "Nothing to ${name.lowercase()}")
     }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -220,8 +219,8 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
             title = title,
             page = pagerState.currentPage + 1,
             pageCount = document.pageCount,
-            canUndo = ink.canUndo,
-            canRedo = ink.canRedo,
+            canUndo = ink.canUndo(pagerState.currentPage),
+            canRedo = ink.canRedo(pagerState.currentPage),
         )
         val toolbarActions = remember(viewModel) {
             ToolbarActions(
