@@ -36,14 +36,14 @@ object FingeringRecognizer {
     internal const val ONE_BASE_TOLERANCE = 0.2f
 
     /** Width range relative to height of the other digits. */
-    internal const val MIN_ASPECT = 0.2f
+    internal const val MIN_ASPECT = 0.35f
     internal const val MAX_ASPECT = 1.25f
 
     /**
      * Furthest a character can be from a template to be read as its digit: the mean distance between
      * matched points, as a fraction of the character's size.
      */
-    internal const val MAX_DISTANCE = 0.15f
+    internal const val MAX_DISTANCE = 0.18f
 
     /** How many times further the next best digit has to be, or the reading is ambiguous. */
     internal const val MIN_MARGIN = 1.3f
@@ -62,6 +62,14 @@ object FingeringRecognizer {
         }
         if (bounds.width / bounds.height !in MIN_ASPECT..MAX_ASPECT) return null
 
+        val ranked = distances(strokes)?.entries?.sortedBy { it.value } ?: return null
+        val best = ranked.firstOrNull() ?: return null
+        val nextBest = ranked.getOrNull(1)?.value ?: Float.POSITIVE_INFINITY
+        return best.key.takeIf { best.value <= MAX_DISTANCE && nextBest >= best.value * MIN_MARGIN }
+    }
+
+    /** How far [strokes] are from each digit's closest template; null if there's no line to follow. */
+    internal fun distances(strokes: List<Trace>): Map<Int, Float>? {
         val distances = HashMap<Int, Float>()
         // People write a 4 or a 5 in either stroke order.
         for (order in if (strokes.size == 2) listOf(strokes, strokes.reversed()) else listOf(strokes)) {
@@ -72,10 +80,7 @@ object FingeringRecognizer {
                 distances.merge(template.digit, distance, ::min)
             }
         }
-        val ranked = distances.entries.sortedBy { it.value }
-        val best = ranked.firstOrNull() ?: return null
-        val nextBest = ranked.getOrNull(1)?.value ?: Float.POSITIVE_INFINITY
-        return best.key.takeIf { best.value <= MAX_DISTANCE && nextBest >= best.value * MIN_MARGIN }
+        return distances
     }
 
     /**
@@ -138,18 +143,21 @@ object FingeringRecognizer {
     }
 
     private val templates = listOf(
-        // Curved and angular 2s.
+        // Curved and angular 2s, and one with a short top over a long base.
         template(2, "5,25 25,3 55,0 85,12 90,32 75,52 35,80 0,100 100,100"),
         template(2, "0,15 40,0 90,10 90,30 0,100 100,100"),
+        template(2, "0,0 35,2 42,20 30,45 5,80 5,90 40,92 100,100"),
         // Round and flat-topped 3s.
         template(3, "10,15 40,0 80,8 85,28 45,48 90,62 100,82 75,98 35,100 0,88"),
         template(3, "0,0 90,0 40,40 85,55 100,78 80,95 40,100 0,92"),
-        // Open and closed 4s in two strokes, and a closed one in one.
+        // Open and closed 4s in two strokes, and in one: an open one goes back down its stem.
         template(4, "10,0 5,62 100,62", "70,0 70,100"),
         template(4, "65,0 0,65 100,65", "68,0 68,100"),
+        template(4, "8,0 0,55 8,62 55,65 72,50 78,0 74,50 72,100"),
         template(4, "70,100 70,0 0,65 100,65"),
-        // A 5 with its bar added afterwards, and one in a single stroke.
+        // A 5 with its bar added afterwards, also a bar wider than the body, and one in a single stroke.
         template(5, "12,5 5,45 50,42 90,55 100,78 80,95 40,100 0,90", "15,0 100,0"),
+        template(5, "10,5 5,45 40,40 62,55 65,78 50,95 25,100 0,90", "12,0 100,5"),
         template(5, "100,0 15,0 8,45 50,40 90,55 100,78 80,95 40,100 0,90"),
     )
 

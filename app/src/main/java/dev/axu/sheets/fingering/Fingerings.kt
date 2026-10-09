@@ -1,5 +1,6 @@
 package dev.axu.sheets.fingering
 
+import dev.axu.sheets.fingering.FingeringRecognizer.MAX_HEIGHT
 import kotlin.math.max
 import kotlin.math.min
 
@@ -9,55 +10,71 @@ class Fingering(val strokes: List<Int>, val digit: Int, val bounds: Bounds)
 /**
  * Finds the finger numbers among strokes written in one go, leaving other writing alone.
  *
- * A digit has at most two strokes, written one after the other, like a 5 and its bar. A fingering
- * stands on its own; digits with other characters beside them, like a date or a bar number, are
- * text. Handwriting keeps characters well under a character's height apart, while fingerings over
- * neighboring notes are further apart than that. Characters above or below each other don't count,
- * so fingerings stacked for a chord are each found.
+ * A digit has at most two strokes, written one after the other, like a 5 and its bar. Characters
+ * side by side are read together: fingerings over quick notes can be as close as letters in a word,
+ * so they're told apart from text such as a date by what's there instead. A digit is a fingering
+ * only if everything beside it is one too; a date has a dot, a slash or another digit. Numbers made
+ * of 1 to 5 alone, like bar 12, are cleaned up like fingerings, which leaves them saying the same.
+ * Characters above or below each other aren't side by side, so fingerings stacked for a chord are
+ * each found.
  */
 object Fingerings {
     /** Consecutive strokes this close, in points, may be parts of one digit, like a 5 and its bar. */
     internal const val JOIN_GAP = 2f
 
-    /** Characters side by side closer than this, in character heights, are text. */
+    /** Characters side by side closer than this, in character heights, are read together. */
     internal const val RUN_GAP = 1f
 
     /**
      * The fingerings among [written], strokes written in one go in the order they were written,
-     * given the bounds of [other] ink already on the page.
+     * given the [other] strokes already on the page, in the order they were drawn.
      */
-    fun find(written: List<Trace>, other: List<Bounds>): List<Fingering> {
-        val characters = characters(written)
-        // Anything larger, like a slur over the notes, isn't a character next to which a fingering
-        // would be text.
-        val neighbors = (characters.map { it.bounds } + other).filter {
-            it.width <= FingeringRecognizer.MAX_HEIGHT && it.height <= FingeringRecognizer.MAX_HEIGHT
+    fun find(written: List<Trace>, other: List<Trace>): List<Fingering> {
+        if (written.isEmpty()) return emptyList()
+        // Only ink close enough to be beside something just written matters.
+        val area = written.map { it.bounds }.reduce(Bounds::union)
+        val earlier = characters(other.filter { it.bounds.isNear(area, MAX_HEIGHT * (1 + RUN_GAP)) })
+        val new = characters(written)
+        val all = earlier + new
+
+        // Group characters side by side, directly or through others. Anything larger than a
+        // character, like a slur over the notes, isn't part of a group.
+        val parent = IntArray(all.size) { it }
+        fun root(i: Int): Int = if (parent[i] == i) i else root(parent[i]).also { parent[i] = it }
+        val characters = all.indices.filter {
+            all[it].bounds.width <= MAX_HEIGHT && all[it].bounds.height <= MAX_HEIGHT
         }
-        return characters.mapNotNull { (strokes, bounds, digit) ->
-            if (digit == null || neighbors.any { it !== bounds && areSideBySide(bounds, it) }) return@mapNotNull null
-            Fingering(strokes, digit, bounds)
+        for (i in characters) {
+            for (j in characters) {
+                if (i < j && areSideBySide(all[i].bounds, all[j].bounds)) parent[root(i)] = root(j)
+            }
+        }
+        val text = characters.filter { all[it].digit == null }.mapTo(HashSet(), ::root)
+        return new.withIndex().mapNotNull { (i, character) ->
+            val (strokes, bounds, digit) = character
+            if (digit == null || root(earlier.size + i) in text) null else Fingering(strokes, digit, bounds)
         }
     }
 
     private data class Character(val strokes: List<Int>, val bounds: Bounds, val digit: Int?)
 
     /**
-     * Splits [written] into characters, joining consecutive strokes that are close together when
+     * Splits [strokes] into characters, joining consecutive strokes that are close together when
      * they make a digit together.
      */
-    private fun characters(written: List<Trace>): List<Character> {
+    private fun characters(strokes: List<Trace>): List<Character> {
         val characters = ArrayList<Character>()
         var i = 0
-        while (i < written.size) {
-            val pair = if (i + 1 < written.size && written[i].bounds.isNear(written[i + 1].bounds, JOIN_GAP)) {
-                FingeringRecognizer.recognize(listOf(written[i], written[i + 1]))
+        while (i < strokes.size) {
+            val pair = if (i + 1 < strokes.size && strokes[i].bounds.isNear(strokes[i + 1].bounds, JOIN_GAP)) {
+                FingeringRecognizer.recognize(listOf(strokes[i], strokes[i + 1]))
             } else {
                 null
             }
-            val strokes = if (pair != null) listOf(i, i + 1) else listOf(i)
-            val digit = pair ?: FingeringRecognizer.recognize(listOf(written[i]))
-            characters += Character(strokes, strokes.map { written[it].bounds }.reduce(Bounds::union), digit)
-            i += strokes.size
+            val indices = if (pair != null) listOf(i, i + 1) else listOf(i)
+            val digit = pair ?: FingeringRecognizer.recognize(listOf(strokes[i]))
+            characters += Character(indices, indices.map { strokes[it].bounds }.reduce(Bounds::union), digit)
+            i += indices.size
         }
         return characters
     }

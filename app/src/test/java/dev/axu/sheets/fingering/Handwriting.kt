@@ -14,8 +14,9 @@ internal class Shape(vararg strokes: String) {
 
     /**
      * Writes this [height] points tall and [aspect] times as wide, with its top left at ([left],
-     * [top]), leaning right by [slant] degrees, and shaken by [wobble] points from [random]. Points
-     * are sampled densely, like pen input.
+     * [top]), leaning right by [slant] degrees. A sloppy hand is imitated by moving each of the
+     * shape's points by about [wobble] of its size, at random from [random]. Points are sampled
+     * densely along it, like pen input.
      */
     fun write(
         left: Float = 0f,
@@ -27,13 +28,14 @@ internal class Shape(vararg strokes: String) {
         random: Random? = null,
     ): List<Trace> {
         val lean = tan(Math.toRadians(slant.toDouble())).toFloat()
-        return strokes.map { points ->
+        fun shake() = if (random == null) 0f else random.nextGaussian().toFloat() * wobble
+        return strokes.map { shape ->
+            val points = shape.map { (x, y) -> x + shake() to y + shake() }
             val xs = ArrayList<Float>()
             val ys = ArrayList<Float>()
             fun add(x: Float, y: Float) {
-                val shake = { if (random == null) 0f else random.nextGaussian().toFloat() * wobble }
-                xs += left + (x * aspect + (1 - y) * lean) * height + shake()
-                ys += top + y * height + shake()
+                xs += left + (x * aspect + (1 - y) * lean) * height
+                ys += top + y * height
             }
             add(points[0].first, points[0].second)
             for (i in 1 until points.size) {

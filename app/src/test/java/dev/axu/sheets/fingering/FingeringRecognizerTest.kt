@@ -48,7 +48,7 @@ class FingeringRecognizerTest {
                     height = 4f + random.nextFloat() * 8f,
                     aspect = 0.5f + random.nextFloat() * 0.5f,
                     slant = -10f + random.nextFloat() * 30f,
-                    wobble = 0.15f,
+                    wobble = 0.05f,
                     random = random,
                 )
                 val read = FingeringRecognizer.recognize(strokes)
@@ -59,7 +59,9 @@ class FingeringRecognizerTest {
 
     @Test
     fun realHandwrittenFingeringsAreRead() {
-        for ((digit, strokes) in RealFingerings.all) assertEquals(digit, FingeringRecognizer.recognize(strokes))
+        for (line in RealFingerings.lines) {
+            assertEquals(line.map { it.first }, line.map { FingeringRecognizer.recognize(it.second) })
+        }
     }
 
     @Test

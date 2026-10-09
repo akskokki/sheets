@@ -16,7 +16,9 @@ class FingeringsTest {
     private val five = digitShapes.getValue("5 in one stroke").second
     private val height = 7f
 
-    private fun digits(written: List<Trace>, other: List<Bounds> = emptyList()) =
+    private val seven = Shape("0,0 85,0 35,100")
+
+    private fun digits(written: List<Trace>, other: List<Trace> = emptyList()) =
         Fingerings.find(written, other).map { it.digit }
 
     private val List<Trace>.bounds get() = map { it.bounds }.reduce(Bounds::union)
@@ -31,10 +33,10 @@ class FingeringsTest {
 
     @Test
     fun fingeringsWrittenAlongAPassageAreEachFound() {
-        val found = Fingerings.find(RealFingerings.strokes, emptyList())
-        assertEquals(RealFingerings.all.map { it.first }, found.map { it.digit })
-        // The first 5 was written as its body, then its bar.
-        assertEquals(listOf(0, 1), found.first().strokes)
+        for (line in RealFingerings.lines) {
+            val found = Fingerings.find(line.flatMap { it.second }, emptyList())
+            assertEquals(line.map { it.first }, found.map { it.digit })
+        }
     }
 
     @Test
@@ -49,25 +51,35 @@ class FingeringsTest {
     }
 
     @Test
-    fun digitsCloseSideBySideAreText() {
-        val gap = RUN_GAP * height
+    fun fingeringsCloseTogetherAreEachFound() {
         val first = one.write()
-        assertEquals(emptyList<Int>(), digits(first + two.writeAfter(first, gap * 0.9f)))
-        assertEquals(listOf(1, 2), digits(first + two.writeAfter(first, gap * 1.1f)))
+        assertEquals(listOf(1, 2), digits(first + two.writeAfter(first, height * 0.1f)))
+    }
+
+    @Test
+    fun aDigitBesideOtherWritingStaysHandwritten() {
+        val gap = RUN_GAP * height
+        val digit = three.write()
+        assertEquals(emptyList<Int>(), digits(digit + seven.writeAfter(digit, gap * 0.9f)))
+        assertEquals(listOf(3), digits(digit + seven.writeAfter(digit, gap * 1.1f)))
     }
 
     @Test
     fun aDigitBesideEarlierWritingStaysHandwritten() {
-        val digit = three.write()
-        val right = digit.bounds.right
-        val earlier = Bounds(right + 1f, 0f, right + 1f + height * 0.7f, height)
-        assertEquals(emptyList<Int>(), digits(digit, listOf(earlier)))
+        val earlier = seven.write()
+        assertEquals(emptyList<Int>(), digits(three.writeAfter(earlier, 1f), other = earlier))
+    }
+
+    @Test
+    fun aFingeringBesideEarlierFingeringsIsFound() {
+        val earlier = one.write()
+        assertEquals(listOf(3), digits(three.writeAfter(earlier, 1f), other = earlier))
     }
 
     @Test
     fun aFingeringUnderASlurIsFound() {
-        val slur = Bounds(-20f, -10f, 40f, 3f)
-        assertEquals(listOf(3), digits(three.write(), listOf(slur)))
+        val slur = Shape("0,100 20,30 50,0 80,30 100,100").write(left = -10f, top = -1f, height = 9f, aspect = 4f)
+        assertEquals(listOf(3), digits(three.write(), other = slur))
     }
 
     @Test
