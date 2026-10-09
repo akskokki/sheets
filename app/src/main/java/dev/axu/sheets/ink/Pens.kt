@@ -31,7 +31,7 @@ object Pens {
         PenColor("Blue", 0xFF1A4FD6.toInt()),
         PenColor("Black", 0xFF1A1A1A.toInt()),
         PenColor("Red", 0xFFE0242B.toInt()),
-        PenColor("Green", 0xFF16924F.toInt()),
+        PenColor("Green", 0xFF1E5404.toInt()),
         PenColor("Pink", 0xFFFF369B.toInt()),
     )
 
