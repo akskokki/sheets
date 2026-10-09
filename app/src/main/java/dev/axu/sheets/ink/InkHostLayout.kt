@@ -29,9 +29,13 @@ sealed interface InkTarget {
         val onStrokeFinished: (Stroke) -> Unit,
     ) : InkTarget
 
-    /** No ink is drawn; the target hears where the stylus goes, in its own coordinates. */
+    /**
+     * No ink is drawn; the target hears where the stylus goes, in its own coordinates. How far the
+     * eraser reaches, [radius] in those coordinates, is shown around the stylus.
+     */
     class Erase(
         override val hostToTarget: Matrix,
+        val radius: Float,
         override val onStarted: () -> Unit,
         val onMove: (x: Float, y: Float) -> Unit,
         val onFinished: () -> Unit,
@@ -69,6 +73,7 @@ class InkHostLayout(
     private val targets = mutableMapOf<InProgressStrokeId, InkTarget.Draw>()
     private var activeStroke: InProgressStrokeId? = null
     private var activeEraser: InkTarget.Erase? = null
+    private val eraserCursor = EraserCursorView(context)
     private val point = FloatArray(2)
     private val palmGuard = PalmGuard()
     private var fingerGestureActive = false
@@ -76,6 +81,7 @@ class InkHostLayout(
     init {
         addView(content, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         addView(wetInk, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        addView(eraserCursor, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         wetInk.addFinishedStrokesListener(
             object : InProgressStrokesFinishedListener {
                 override fun onStrokesFinished(strokes: Map<InProgressStrokeId, Stroke>) {
@@ -146,6 +152,7 @@ class InkHostLayout(
             if (event.actionMasked == MotionEvent.ACTION_MOVE) erase(eraser, event)
             if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
                 eraser.onFinished()
+                eraserCursor.hide()
                 activeEraser = null
             }
             return true
@@ -189,9 +196,12 @@ class InkHostLayout(
             eraser.hostToTarget.mapPoints(point)
             eraser.onMove(point[0], point[1])
         }
+        eraserCursor.show(event.x, event.y, eraser.radiusOnScreen, pressed = true)
         // Like finished strokes, erased ones should go in the next frame, not the one after.
         Snapshot.sendApplyNotifications()
     }
+
+    private val InkTarget.Erase.radiusOnScreen: Float get() = radius / hostToTarget.mapRadius(1f)
 
     private fun cancelStroke(id: InProgressStrokeId, event: MotionEvent) {
         wetInk.cancelStroke(id, event)

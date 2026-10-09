@@ -9,6 +9,7 @@ import androidx.ink.brush.Brush
 import androidx.ink.strokes.Stroke
 import dev.axu.sheets.ink.InkTarget
 import dev.axu.sheets.ink.InkTargetResolver
+import dev.axu.sheets.ink.StrokeEraser
 
 /** One movement of the eraser over a page, in page coordinates (points). */
 interface PageEraser {
@@ -71,6 +72,7 @@ class PageInkTargets(
                 var eraser: PageEraser? = null
                 return InkTarget.Erase(
                     hostToPage,
+                    StrokeEraser.RADIUS,
                     onStarted = {
                         onStrokeStarted()
                         eraser = startErasing(page)

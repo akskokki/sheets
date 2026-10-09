@@ -10,8 +10,8 @@ import kotlin.math.hypot
 
 /** Erasing whole strokes by touching them with the eraser. Coordinates are in PDF points. */
 object StrokeEraser {
-    /** How close the eraser has to pass to a stroke to erase it, about 1.5 mm. */
-    const val RADIUS = 4f
+    /** How close the eraser has to pass to a stroke to erase it, about 2 mm on the printed page. */
+    const val RADIUS = 6f
 
     /** The strokes among [candidates] that the eraser touches moving from ([x0], [y0]) to ([x1], [y1]). */
     fun touched(x0: Float, y0: Float, x1: Float, y1: Float, candidates: List<Stroke>): List<Stroke> {
