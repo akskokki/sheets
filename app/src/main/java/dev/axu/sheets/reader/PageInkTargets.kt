@@ -20,8 +20,6 @@ class PageInkTargets(
     private val crops: List<RectF>,
     private val brush: () -> Brush,
     private val onStrokeFinished: (page: Int, stroke: Stroke) -> Unit,
-    private val onPenDown: () -> Unit = {},
-    private val onPenUp: () -> Unit = {},
 ) : InkTargetResolver {
     // Coordinates rather than rectangles: zooming changes where a page is drawn without laying it
     // out again, so positions are only accurate when read at the moment the pen comes down.
@@ -58,13 +56,7 @@ class PageInkTargets(
                 postScale(pointsPerPx, pointsPerPx)
                 postTranslate(crop.left, crop.top)
             }
-            return InkTarget(
-                brush(),
-                hostToPage,
-                onStrokeFinished = { stroke -> onStrokeFinished(page, stroke) },
-                onStrokeStarted = onPenDown,
-                onStrokeEnded = onPenUp,
-            )
+            return InkTarget(brush(), hostToPage) { stroke -> onStrokeFinished(page, stroke) }
         }
         return null
     }

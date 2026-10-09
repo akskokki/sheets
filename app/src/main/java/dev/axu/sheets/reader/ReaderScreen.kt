@@ -112,13 +112,7 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
     val pen = container.pen
     val settings = container.settings
     val inkTargets = remember(document) {
-        PageInkTargets(
-            state.crops,
-            brush = { pen.brush },
-            onStrokeFinished = viewModel::onStrokeFinished,
-            onPenDown = viewModel::onPenDown,
-            onPenUp = viewModel::onPenUp,
-        )
+        PageInkTargets(state.crops, brush = { pen.brush }, onStrokeFinished = viewModel::onStrokeFinished)
     }
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.settledPage }.collect { page ->

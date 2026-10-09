@@ -36,12 +36,6 @@ The two builds are separate apps with separate data. Sheets Dev keeps its folder
   hidden.
 - **Editing**: scribble back and forth over ink to erase it (`ScratchOut`, which ignores trills,
   hairpins, circles and scribbles over nothing). Two-finger tap undoes, three-finger tap redoes.
-- **Fingerings** (`fingering/`): handwritten finger numbers 1 to 5 are replaced by clean digits of one
-  size, in the same color, once the pen has been up for a moment; undo brings the handwriting back.
-  `FingeringRecognizer` reads a 1 by its shape and other digits by comparison with templates of
-  common ways to write them. `Fingerings` leaves other writing alone: digits beside anything that
-  isn't a fingering, like a date, are text. Sizes are judged as if the page were A4. Only
-  `FingeringCleanup` touches the reader, through a few calls in `ReaderViewModel`.
 - **Ink** (`ink/`): `InkHostLayout` wraps the whole UI at the View level. Pen input that starts on a
   page is drawn as low-latency wet ink by Jetpack Ink's front-buffered `InProgressStrokesView` and
   never reaches Compose; fingers (and the pen anywhere else) work the UI as usual. `PalmGuard`
