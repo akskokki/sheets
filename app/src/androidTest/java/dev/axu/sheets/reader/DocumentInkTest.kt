@@ -53,6 +53,19 @@ class DocumentInkTest {
     }
 
     @Test
+    fun undoingAReplacementBringsBackWhatWasReplaced() {
+        val ink = DocumentInk(Annotations(mapOf(0 to listOf(a, b)), listOf(a, b)))
+        ink.replace(0, listOf(a), listOf(c))
+        assertEquals(listOf(b, c), ink.strokesOn(0))
+        assertEquals(listOf(b, c), ink.toAnnotations().drawingOrder)
+
+        assertEquals(0, ink.undo())
+        assertEquals(listOf(a, b), ink.strokesOn(0))
+        assertEquals(0, ink.redo())
+        assertEquals(listOf(b, c), ink.strokesOn(0))
+    }
+
+    @Test
     fun redoIsClearedByNewEdits() {
         val ink = DocumentInk(Annotations.Empty)
         ink.add(0, a)

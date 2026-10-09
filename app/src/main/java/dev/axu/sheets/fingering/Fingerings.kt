@@ -10,7 +10,8 @@ class Fingering(val strokes: List<Int>, val digit: Int, val bounds: Bounds)
 /**
  * Finds the finger numbers among strokes written in one go, leaving other writing alone.
  *
- * A digit has at most two strokes, written one after the other, like a 5 and its bar. Characters
+ * A digit has at most two strokes, written one after the other, like a 5 and its bar; crossing
+ * strokes that don't make a digit together are something else, not two digits. Characters
  * side by side are read together: fingerings over quick notes can be as close as letters in a word,
  * so they're told apart from text such as a date by what's there instead. A digit is a fingering
  * only if everything beside it is one too; a date has a dot, a slash or another digit. Numbers made
@@ -37,13 +38,11 @@ object Fingerings {
         val new = characters(written)
         val all = earlier + new
 
-        // Group characters side by side, directly or through others. Anything larger than a
+        // Group characters side by side, directly or through others. Anything longer than a
         // character, like a slur over the notes, isn't part of a group.
         val parent = IntArray(all.size) { it }
         fun root(i: Int): Int = if (parent[i] == i) i else root(parent[i]).also { parent[i] = it }
-        val characters = all.indices.filter {
-            all[it].bounds.width <= MAX_HEIGHT && all[it].bounds.height <= MAX_HEIGHT
-        }
+        val characters = all.indices.filter { all[it].bounds.width <= MAX_HEIGHT }
         for (i in characters) {
             for (j in characters) {
                 if (i < j && areSideBySide(all[i].bounds, all[j].bounds)) parent[root(i)] = root(j)
@@ -60,19 +59,21 @@ object Fingerings {
 
     /**
      * Splits [strokes] into characters, joining consecutive strokes that are close together when
-     * they make a digit together.
+     * they make a digit together, and ones that overlap anyway.
      */
     private fun characters(strokes: List<Trace>): List<Character> {
         val characters = ArrayList<Character>()
         var i = 0
         while (i < strokes.size) {
-            val pair = if (i + 1 < strokes.size && strokes[i].bounds.isNear(strokes[i + 1].bounds, JOIN_GAP)) {
-                FingeringRecognizer.recognize(listOf(strokes[i], strokes[i + 1]))
+            val next = strokes.getOrNull(i + 1)
+            val near = next != null && strokes[i].bounds.isNear(next.bounds, JOIN_GAP)
+            val pair = if (near) FingeringRecognizer.recognize(listOf(strokes[i], next)) else null
+            val indices = if (pair != null || (near && strokes[i].bounds.isNear(next.bounds, 0f))) {
+                listOf(i, i + 1)
             } else {
-                null
+                listOf(i)
             }
-            val indices = if (pair != null) listOf(i, i + 1) else listOf(i)
-            val digit = pair ?: FingeringRecognizer.recognize(listOf(strokes[i]))
+            val digit = if (indices.size == 2) pair else FingeringRecognizer.recognize(listOf(strokes[i]))
             characters += Character(indices, indices.map { strokes[it].bounds }.reduce(Bounds::union), digit)
             i += indices.size
         }

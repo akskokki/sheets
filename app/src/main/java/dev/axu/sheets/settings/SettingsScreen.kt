@@ -59,6 +59,11 @@ fun SettingsScreen(onBack: () -> Unit) {
                 settings.scratchOutToErase,
             ) { settings.scratchOutToErase = it }
             Toggle(
+                "Tidy finger numbers",
+                "Replace handwritten fingerings 1 to 5 with clean, evenly sized digits. Undo brings back your handwriting.",
+                settings.cleanUpFingerings,
+            ) { settings.cleanUpFingerings = it }
+            Toggle(
                 "Ignore palm while writing",
                 "Ignore touches that start while the pen is touching or hovering over the screen.",
                 settings.ignorePalm,

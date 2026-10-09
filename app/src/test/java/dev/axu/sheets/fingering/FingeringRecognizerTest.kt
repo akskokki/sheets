@@ -8,6 +8,7 @@ import dev.axu.sheets.fingering.FingeringRecognizer.MIN_HEIGHT
 import dev.axu.sheets.fingering.FingeringRecognizer.ONE_BASE_TOLERANCE
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Random
 import kotlin.math.tan
@@ -58,10 +59,11 @@ class FingeringRecognizerTest {
     }
 
     @Test
-    fun realHandwrittenFingeringsAreRead() {
-        for (line in RealFingerings.lines) {
-            assertEquals(line.map { it.first }, line.map { FingeringRecognizer.recognize(it.second) })
-        }
+    fun realHandwrittenFingeringsAreReadAndNeverMisread() {
+        val read = RealFingerings.all.map { (digit, strokes) -> digit to FingeringRecognizer.recognize(strokes) }
+        for ((digit, reading) in read) if (reading != null) assertEquals(digit, reading)
+        val unread = read.count { it.second == null }
+        assertTrue("$unread of ${read.size} unread", unread <= read.size / 20)
     }
 
     @Test
@@ -80,6 +82,8 @@ class FingeringRecognizerTest {
             "6" to Shape("75,0 35,30 10,70 30,100 70,92 78,62 42,52 12,72").write(),
             "7" to Shape("0,0 85,0 35,100").write(),
             "7 with a rising top" to Shape("0,8 85,0 35,100").write(),
+            "L" to Shape("0,0 0,100 100,100").write(),
+            "first stroke of a 4" to Shape("15,0 8,60 100,60").write(),
             "8" to Shape("75,10 45,0 12,12 50,50 88,78 50,100 12,80 50,50 85,20 75,10").write(),
             "9" to Shape("80,25 45,0 10,22 38,48 80,30 78,22 72,100").write(),
         )

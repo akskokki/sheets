@@ -22,6 +22,10 @@ class InkTarget(
     /** Maps host (window) coordinates to the target's coordinate space, e.g. PDF points. */
     val hostToTarget: Matrix,
     val onStrokeFinished: (Stroke) -> Unit,
+    /** When the pen comes down to draw here. */
+    val onStrokeStarted: () -> Unit = {},
+    /** When the pen lifts or the stroke is cancelled, before [onStrokeFinished]. */
+    val onStrokeEnded: () -> Unit = {},
 )
 
 fun interface InkTargetResolver {
@@ -112,6 +116,7 @@ class InkHostLayout(
             val id = wetInk.startStroke(event, event.getPointerId(0), target.brush, target.hostToTarget)
             targets[id] = target
             activeStroke = id
+            target.onStrokeStarted()
             return true
         }
 
@@ -129,6 +134,7 @@ class InkHostLayout(
             }
 
             MotionEvent.ACTION_UP -> {
+                targets[id]?.onStrokeEnded?.invoke()
                 if (event.flags and MotionEvent.FLAG_CANCELED != 0) {
                     cancelStroke(id, event)
                 } else {
@@ -138,6 +144,7 @@ class InkHostLayout(
             }
 
             MotionEvent.ACTION_CANCEL -> {
+                targets[id]?.onStrokeEnded?.invoke()
                 cancelStroke(id, event)
                 activeStroke = null
             }

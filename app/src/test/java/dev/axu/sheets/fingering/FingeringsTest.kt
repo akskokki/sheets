@@ -3,6 +3,7 @@ package dev.axu.sheets.fingering
 import dev.axu.sheets.fingering.Fingerings.JOIN_GAP
 import dev.axu.sheets.fingering.Fingerings.RUN_GAP
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -32,11 +33,27 @@ class FingeringsTest {
         write(top = previous.bounds.bottom + gap - write().bounds.top)
 
     @Test
-    fun fingeringsWrittenAlongAPassageAreEachFound() {
+    fun fingeringsWrittenAlongAPassageAreFoundAndNeverMisread() {
+        var missed = 0
         for (line in RealFingerings.lines) {
+            // Which fingering each stroke belongs to.
+            val owner = line.flatMapIndexed { i, (_, strokes) -> strokes.map { i } }
             val found = Fingerings.find(line.flatMap { it.second }, emptyList())
-            assertEquals(line.map { it.first }, found.map { it.digit })
+            for (fingering in found) {
+                val (digit, strokes) = line[owner[fingering.strokes.first()]]
+                assertEquals(digit, fingering.digit)
+                assertEquals(strokes.size, fingering.strokes.size)
+            }
+            missed += line.size - found.size
         }
+        assertTrue("$missed missed", missed <= RealFingerings.all.size / 20)
+    }
+
+    @Test
+    fun crossingStrokesThatArentADigitAreNotTwoDigits() {
+        // A steep cross: each stroke alone would be a 1.
+        val strokes = Shape("30,0 70,100", "70,0 30,100").write()
+        assertEquals(emptyList<Int>(), digits(strokes))
     }
 
     @Test

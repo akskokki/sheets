@@ -16,9 +16,9 @@ import kotlin.math.min
  * another is worse than leaving it handwritten, so readings close to two digits are rejected.
  */
 object FingeringRecognizer {
-    /** Height range of a handwritten fingering; a staff space is about 5-7 points. */
+    /** Height range of a handwritten fingering; a staff space is about 5-7 points on an A4 page. */
     internal const val MIN_HEIGHT = 3f
-    internal const val MAX_HEIGHT = 14f
+    internal const val MAX_HEIGHT = 18f
 
     /** The stem of a 1 leans at most this many degrees from upright... */
     internal const val MAX_ONE_LEAN = 30.0
@@ -50,6 +50,9 @@ object FingeringRecognizer {
 
     private const val POINTS = 32
 
+    /** Templates of shapes that look a little like digits but aren't. */
+    private const val NOT_A_DIGIT = 0
+
     fun recognize(strokes: List<Trace>): Int? {
         if (strokes.isEmpty()) return null
         val bounds = strokes.map { it.bounds }.reduce(Bounds::union)
@@ -65,7 +68,9 @@ object FingeringRecognizer {
         val ranked = distances(strokes)?.entries?.sortedBy { it.value } ?: return null
         val best = ranked.firstOrNull() ?: return null
         val nextBest = ranked.getOrNull(1)?.value ?: Float.POSITIVE_INFINITY
-        return best.key.takeIf { best.value <= MAX_DISTANCE && nextBest >= best.value * MIN_MARGIN }
+        return best.key.takeIf {
+            it != NOT_A_DIGIT && best.value <= MAX_DISTANCE && nextBest >= best.value * MIN_MARGIN
+        }
     }
 
     /** How far [strokes] are from each digit's closest template; null if there's no line to follow. */
@@ -159,6 +164,9 @@ object FingeringRecognizer {
         template(5, "12,5 5,45 50,42 90,55 100,78 80,95 40,100 0,90", "15,0 100,0"),
         template(5, "10,5 5,45 40,40 62,55 65,78 50,95 25,100 0,90", "12,0 100,5"),
         template(5, "100,0 15,0 8,45 50,40 90,55 100,78 80,95 40,100 0,90"),
+        // Not digits, but close to some: an L, like the first stroke of an open 4 on its own.
+        template(NOT_A_DIGIT, "0,0 0,100 100,100"),
+        template(NOT_A_DIGIT, "10,0 5,62 100,62"),
     )
 
     /**
