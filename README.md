@@ -36,7 +36,8 @@ The two builds are separate apps with separate data. Sheets Dev keeps its folder
   hidden.
 - **Editing**: scribble back and forth over ink to erase it (`ScratchOut`, which ignores trills,
   hairpins, circles and scribbles over nothing), or turn on the eraser in the toolbar, which erases
-  whole strokes it touches (`StrokeEraser`); one sweep is one undo. While the eraser is on and the
+  whole strokes it touches (`StrokeEraser`); one sweep is one undo. Its reach shows as a circle
+  around the pen while erasing, and faintly while the pen hovers. While the eraser is on and the
   toolbar hidden, a chip in the corner says so. Two-finger tap undoes, three-finger tap redoes.
 - **Ink** (`ink/`): `InkHostLayout` wraps the whole UI at the View level. Pen input that starts on a
   page is drawn as low-latency wet ink by Jetpack Ink's front-buffered `InProgressStrokesView` and

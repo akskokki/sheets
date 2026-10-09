@@ -110,7 +110,10 @@ class InkHostLayout(
     }
 
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
-        if (event.isStylus) palmGuard.onStylusEvent(event.actionMasked, event.eventTime)
+        if (event.isStylus) {
+            palmGuard.onStylusEvent(event.actionMasked, event.eventTime)
+            showEraserWhileHovering(event)
+        }
         return super.dispatchGenericMotionEvent(event)
     }
 
@@ -199,6 +202,21 @@ class InkHostLayout(
         eraserCursor.show(event.x, event.y, eraser.radiusOnScreen, pressed = true)
         // Like finished strokes, erased ones should go in the next frame, not the one after.
         Snapshot.sendApplyNotifications()
+    }
+
+    /** Previews where the eraser would reach, while the stylus hovers over somewhere it would erase. */
+    private fun showEraserWhileHovering(event: MotionEvent) {
+        val eraser = when (event.actionMasked) {
+            MotionEvent.ACTION_HOVER_ENTER, MotionEvent.ACTION_HOVER_MOVE ->
+                targetResolver?.inkTargetAt(event.x, event.y) as? InkTarget.Erase
+
+            else -> null
+        }
+        if (eraser == null) {
+            eraserCursor.hide()
+        } else {
+            eraserCursor.show(event.x, event.y, eraser.radiusOnScreen, pressed = false)
+        }
     }
 
     private val InkTarget.Erase.radiusOnScreen: Float get() = radius / hostToTarget.mapRadius(1f)

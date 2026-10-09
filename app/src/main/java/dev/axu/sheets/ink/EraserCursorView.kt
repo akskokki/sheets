@@ -5,7 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.view.View
 
-/** How far the eraser reaches around the pen. */
+/** How far the eraser reaches around the pen: faint while hovering, firmer while erasing. */
 internal class EraserCursorView(context: Context) : View(context) {
     private var centerX = 0f
     private var centerY = 0f
