@@ -49,6 +49,9 @@ object Pens {
 
     val defaultColor = colors.first()
     val defaultWidth = PenWidth.Medium
+
+    /** Offered to switch to before any others have been used. */
+    val defaultRecents = listOf("Red", "Black").map { name -> Pen(colors.first { it.name == name }, defaultWidth) }
     val Default: Brush = brush(defaultColor, defaultWidth)
 
     fun idOf(family: BrushFamily): String =
@@ -57,7 +60,7 @@ object Pens {
     fun familyOf(id: String): BrushFamily? = families[id]
 }
 
-/** The pen the user writes with, remembered across sessions. */
+/** The pen the user writes with and the ones used before it, remembered across sessions. */
 @Stable
 class PenSettings(context: Context) {
     private val prefs = context.getSharedPreferences("pen", Context.MODE_PRIVATE)
@@ -72,7 +75,32 @@ class PenSettings(context: Context) {
     )
         private set
 
+    val pen: Pen get() = Pen(color, width)
+
     val brush: Brush get() = Pens.brush(color, width)
+
+    /** The pens used before this one, most recent first; see [RecentPens]. */
+    var recents: List<Pen> by mutableStateOf(loadRecents())
+        private set
+
+    private var choosingFrom: Pen? = null
+
+    /** Starts trying out colors and widths, after which only the pen finally chosen counts as used. */
+    fun startChoosing() {
+        choosingFrom = pen
+    }
+
+    fun doneChoosing() {
+        val from = choosingFrom ?: return
+        choosingFrom = null
+        if (from != pen) saveRecents(RecentPens.afterSwitch(from, pen, recents))
+    }
+
+    fun switchTo(pen: Pen) {
+        saveRecents(RecentPens.afterSwitch(this.pen, pen, recents))
+        select(pen.color)
+        select(pen.width)
+    }
 
     fun select(color: PenColor) {
         this.color = color
@@ -84,8 +112,28 @@ class PenSettings(context: Context) {
         prefs.edit { putString(KEY_WIDTH, width.name) }
     }
 
+    private fun saveRecents(recents: List<Pen>) {
+        this.recents = recents
+        val saved = recents.joinToString(",") { "${it.color.name}/${it.width.name}" }
+        prefs.edit { putString(KEY_RECENTS, saved) }
+    }
+
+    private fun loadRecents(): List<Pen> {
+        val saved = prefs.getString(KEY_RECENTS, null) ?: return Pens.defaultRecents.filter { it != pen }
+        return saved.split(",").mapNotNull { entry ->
+            val (color, width) = entry.split("/").takeIf { it.size == 2 } ?: return@mapNotNull null
+            Pen(
+                Pens.colors.firstOrNull { it.name == color } ?: return@mapNotNull null,
+                PenWidth.entries.firstOrNull { it.name == width } ?: return@mapNotNull null,
+            )
+        }
+    }
+
     private companion object {
         const val KEY_COLOR = "color"
         const val KEY_WIDTH = "width"
+
+        /** Color and width names, as "Red/Fine,Black/Medium". */
+        const val KEY_RECENTS = "recents"
     }
 }

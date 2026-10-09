@@ -22,7 +22,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.axu.sheets.R
-import dev.axu.sheets.ink.PenSettings
 
 /** Width of the vertical toolbar, used when the page leaves enough room beside it. */
 val ToolbarRailWidth: Dp = 72.dp
@@ -36,9 +35,8 @@ class ToolbarActions(val onBack: () -> Unit, val onUndo: () -> Unit, val onRedo:
 fun ReaderTopBar(
     state: ToolbarState,
     actions: ToolbarActions,
-    pen: PenSettings,
-    penMenu: PenMenuState,
     modifier: Modifier = Modifier,
+    tools: @Composable () -> Unit,
 ) {
     Surface(color = ToolbarColor, shadowElevation = 2.dp, modifier = modifier.fillMaxWidth()) {
         Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -50,7 +48,7 @@ fun ReaderTopBar(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
             )
-            ToolGroup(vertical = false) { PenButton(pen, penMenu, vertical = false) }
+            tools()
             Spacer(Modifier.width(12.dp))
             EditButtons(state, actions)
             PageNumber(state, Modifier.padding(start = 8.dp, end = 16.dp))
@@ -63,9 +61,8 @@ fun ReaderTopBar(
 fun ReaderSideRail(
     state: ToolbarState,
     actions: ToolbarActions,
-    pen: PenSettings,
-    penMenu: PenMenuState,
     modifier: Modifier = Modifier,
+    tools: @Composable () -> Unit,
 ) {
     Surface(color = ToolbarColor, shadowElevation = 2.dp, modifier = modifier.width(ToolbarRailWidth).fillMaxHeight()) {
         Column(Modifier.padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -73,7 +70,7 @@ fun ReaderSideRail(
             Spacer(Modifier.height(24.dp))
             EditButtons(state, actions)
             Spacer(Modifier.height(24.dp))
-            ToolGroup(vertical = true) { PenButton(pen, penMenu, vertical = true) }
+            tools()
             Spacer(Modifier.weight(1f))
             PageNumber(state, Modifier.padding(bottom = 16.dp))
         }

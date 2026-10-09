@@ -52,3 +52,5 @@ The two builds are separate apps with separate data. Sheets Dev keeps its folder
   choose. Writing on the page, a touch anywhere else or tapping the pen again closes it. The menu
   floats above the reader (`PenMenu`) rather than in the clipped toolbar, and the touch that closes
   it doesn't also turn the page.
+  The last pens used sit beside it (`RecentPens`, optional in settings), to switch back in one
+  tap; only the pen finally chosen in the menu counts, not every color tried on the way.

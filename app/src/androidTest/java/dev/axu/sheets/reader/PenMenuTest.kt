@@ -45,7 +45,7 @@ class PenMenuTest {
 
     @Test
     fun aTouchOutsideTheOpenPenMenuOnlyClosesIt() {
-        rule.runOnIdle { menu.isOpen = true }
+        rule.runOnIdle { menu.open() }
         rule.onNodeWithTag("page").performTouchInput { click(centerRight) }
         rule.runOnIdle {
             assertFalse(menu.isOpen)

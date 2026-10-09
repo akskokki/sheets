@@ -112,25 +112,26 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
     val container = LocalContext.current.appContainer
     val pen = container.pen
     val settings = container.settings
-    val penMenu = remember { PenMenuState() }
+    // Only the pen finally chosen in the menu counts as used, not every color tried on the way.
+    val penMenu = remember { PenMenuState(onOpen = pen::startChoosing, onClose = pen::doneChoosing) }
     val inkTargets = remember(document) {
         PageInkTargets(
             state.crops,
             brush = { pen.brush },
             // Writing on the page is the natural way to be done with the pen menu.
-            onStrokeStarted = { penMenu.isOpen = false },
+            onStrokeStarted = penMenu::close,
             onStrokeFinished = viewModel::onStrokeFinished,
         )
     }
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.settledPage }.collect { page ->
             zoom.reset()
-            penMenu.isOpen = false
+            penMenu.close()
             viewModel.onPageSettled(page)
         }
     }
 
-    LaunchedEffect(chromeVisible) { if (!chromeVisible) penMenu.isOpen = false }
+    LaunchedEffect(chromeVisible) { if (!chromeVisible) penMenu.close() }
 
     val inkHost = LocalInkHost.current
     DisposableEffect(inkHost, inkTargets) {
@@ -234,9 +235,13 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
         AnimatedVisibility(chromeVisible, enter = fadeIn(), exit = fadeOut()) {
             DisposableEffect(Unit) { onDispose { inkTargets.onExclusionRemoved(ToolbarKey) } }
             if (useRail) {
-                ReaderSideRail(toolbarState, toolbarActions, pen, penMenu, toolbarModifier)
+                ReaderSideRail(toolbarState, toolbarActions, toolbarModifier) {
+                    DrawingTools(pen, penMenu, settings.showRecentPens, vertical = true)
+                }
             } else {
-                ReaderTopBar(toolbarState, toolbarActions, pen, penMenu, toolbarModifier)
+                ReaderTopBar(toolbarState, toolbarActions, toolbarModifier) {
+                    DrawingTools(pen, penMenu, settings.showRecentPens, vertical = false)
+                }
             }
         }
         if (chromeVisible) PenMenu(penMenu, pen, sideways = useRail, inkTargets)

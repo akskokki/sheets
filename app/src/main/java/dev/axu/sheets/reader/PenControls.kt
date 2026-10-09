@@ -42,13 +42,33 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.axu.sheets.R
+import dev.axu.sheets.ink.Pen
 import dev.axu.sheets.ink.PenSettings
 import dev.axu.sheets.ink.PenWidth
 import dev.axu.sheets.ink.Pens
 
-/** The toolbar's drawing tools, on a shared background, in a row or (for the side rail) a column. */
+/**
+ * The toolbar's drawing tools: the pen, and optionally the ones used before it to switch back to, in
+ * a row or (for the side rail) a column.
+ */
 @Composable
-fun ToolGroup(vertical: Boolean, content: @Composable () -> Unit) {
+fun DrawingTools(pen: PenSettings, menu: PenMenuState, showRecents: Boolean, vertical: Boolean) {
+    ToolGroup(vertical) {
+        PenButton(pen, menu, vertical)
+        if (showRecents) {
+            for (recent in pen.recents) {
+                RecentPenButton(recent) {
+                    menu.close()
+                    pen.switchTo(recent)
+                }
+            }
+        }
+    }
+}
+
+/** Tools on a shared background. */
+@Composable
+private fun ToolGroup(vertical: Boolean, content: @Composable () -> Unit) {
     val modifier = Modifier
         .clip(RoundedCornerShape(50))
         .background(ToolGroupColor)
@@ -62,7 +82,7 @@ fun ToolGroup(vertical: Boolean, content: @Composable () -> Unit) {
 
 /** The pen in use, drawn as a short line; tapping it opens [menu] to change its color and width. */
 @Composable
-fun PenButton(pen: PenSettings, menu: PenMenuState, vertical: Boolean) {
+private fun PenButton(pen: PenSettings, menu: PenMenuState, vertical: Boolean) {
     // The arrow points to where the menu opens, and back once it's open.
     val turn by animateFloatAsState(if (menu.isOpen) 180f else 0f, label = "arrow")
     val modifier = Modifier
@@ -70,7 +90,7 @@ fun PenButton(pen: PenSettings, menu: PenMenuState, vertical: Boolean) {
         .shadow(1.dp, CircleShape)
         .clip(RoundedCornerShape(50))
         .background(Color.White)
-        .clickable { menu.isOpen = !menu.isOpen }
+        .clickable { menu.toggle() }
         .semantics { contentDescription = "Pen: ${pen.color.name}, ${pen.width.name}" }
     val content: @Composable () -> Unit = {
         PenLine(Color(pen.color.argb), pen.width, Modifier.size(40.dp, 24.dp))
@@ -89,6 +109,21 @@ fun PenButton(pen: PenSettings, menu: PenMenuState, vertical: Boolean) {
             modifier.height(44.dp).padding(start = 12.dp, end = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) { content() }
+    }
+}
+
+/** A pen used before, to switch back to in one tap. */
+@Composable
+private fun RecentPenButton(pen: Pen, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(48.dp, 44.dp)
+            .clip(RoundedCornerShape(50))
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = "Switch to ${pen.color.name}, ${pen.width.name}" },
+        contentAlignment = Alignment.Center,
+    ) {
+        PenLine(Color(pen.color.argb), pen.width, Modifier.size(32.dp, 20.dp))
     }
 }
 

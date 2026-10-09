@@ -33,8 +33,23 @@ import kotlin.math.roundToInt
 
 /** Whether the pen menu is open, and where it opens from. */
 @Stable
-class PenMenuState {
+class PenMenuState(private val onOpen: () -> Unit = {}, private val onClose: () -> Unit = {}) {
     var isOpen by mutableStateOf(false)
+        private set
+
+    fun open() {
+        if (isOpen) return
+        isOpen = true
+        onOpen()
+    }
+
+    fun close() {
+        if (!isOpen) return
+        isOpen = false
+        onClose()
+    }
+
+    fun toggle() = if (isOpen) close() else open()
 
     /** The pen button's bounds, in root coordinates. */
     var anchor by mutableStateOf(Rect.Zero)
@@ -97,7 +112,7 @@ fun ClosePenMenuOnTouch(state: PenMenuState) {
             .pointerInput(state) {
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false).consume()
-                    state.isOpen = false
+                    state.close()
                 }
             },
     )

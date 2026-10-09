@@ -15,6 +15,7 @@ class Settings(context: Context) {
     private val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
     var scratchOutToErase by setting("scratch_out_to_erase", default = true)
+    var showRecentPens by setting("show_recent_pens", default = true)
     var ignorePalm by setting("ignore_palm", default = true)
     var multiFingerTapUndo by setting("multi_finger_tap_undo", default = true)
     var tapEdgesToTurnPages by setting("tap_edges_to_turn_pages", default = true)

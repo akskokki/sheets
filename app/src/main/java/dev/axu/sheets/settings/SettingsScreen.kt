@@ -59,6 +59,11 @@ fun SettingsScreen(onBack: () -> Unit) {
                 settings.scratchOutToErase,
             ) { settings.scratchOutToErase = it }
             Toggle(
+                "Recent pens",
+                "Show the pens you used last next to the pen in the toolbar, to switch back in one tap.",
+                settings.showRecentPens,
+            ) { settings.showRecentPens = it }
+            Toggle(
                 "Ignore palm while writing",
                 "Ignore touches that start while the pen is touching or hovering over the screen.",
                 settings.ignorePalm,
