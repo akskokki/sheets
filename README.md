@@ -56,4 +56,6 @@ The two builds are separate apps with separate data. Sheets Dev keeps its folder
   floats above the reader (`PenMenu`) rather than in the clipped toolbar, and the touch that closes
   it doesn't also turn the page.
   The last pens used sit beside it (`RecentPens`, optional in settings), to switch back in one
-  tap; only the pen finally chosen in the menu counts, not every color tried on the way.
+  tap; only the pen finally chosen in the menu counts, not every color tried on the way. The pen
+  button changes at once, while recent pens that change place fade over toward their new places,
+  or slide one place on (`RecentPens.changes`).

@@ -1,6 +1,10 @@
 package dev.axu.sheets.reader
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -39,22 +43,28 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import dev.axu.sheets.R
 import dev.axu.sheets.ink.Pen
 import dev.axu.sheets.ink.PenSettings
 import dev.axu.sheets.ink.PenWidth
 import dev.axu.sheets.ink.Pens
+import dev.axu.sheets.ink.RecentPens
+import dev.axu.sheets.ink.RecentPens.Arriving
+import dev.axu.sheets.ink.RecentPens.Leaving
 import kotlinx.coroutines.launch
 
 /**
@@ -73,8 +83,9 @@ fun DrawingTools(
     ToolGroup(vertical) {
         PenButton(pen, menu, selected = !erasing, onSelect = { onErasingChange(false) }, vertical)
         if (showRecents) {
-            for (recent in pen.recents) {
-                RecentPenButton(recent) {
+            val motion = rememberRecentPensMotion(pen.recents, pen.pen)
+            pen.recents.forEachIndexed { i, recent ->
+                RecentPenButton(recent, motion.changes.getOrNull(i), { motion.elapsed.value }, vertical) {
                     menu.close()
                     pen.switchTo(recent)
                     onErasingChange(false)
@@ -101,9 +112,9 @@ private fun ToolGroup(vertical: Boolean, content: @Composable () -> Unit) {
         .background(ToolGroupColor)
         .padding(4.dp)
     if (vertical) {
-        Column(modifier, Arrangement.spacedBy(4.dp), Alignment.CenterHorizontally) { content() }
+        Column(modifier, Arrangement.spacedBy(ToolSpacing), Alignment.CenterHorizontally) { content() }
     } else {
-        Row(modifier, Arrangement.spacedBy(4.dp), Alignment.CenterVertically) { content() }
+        Row(modifier, Arrangement.spacedBy(ToolSpacing), Alignment.CenterVertically) { content() }
     }
 }
 
@@ -153,16 +164,98 @@ private fun PenButton(
 
 /** A pen used before, to switch back to in one tap. */
 @Composable
-private fun RecentPenButton(pen: Pen, onClick: () -> Unit) {
+private fun RecentPenButton(
+    pen: Pen,
+    change: RecentPens.Change?,
+    elapsed: () -> Float,
+    vertical: Boolean,
+    onClick: () -> Unit,
+) {
     ToolButton(
         selected = false,
         description = "Switch to ${pen.color.name}, ${pen.width.name}",
         gesture = { toolClick(onClick) },
-        modifier = Modifier.size(48.dp, 44.dp),
+        modifier = Modifier.size(RecentPenSize),
     ) {
-        PenLine(Color(pen.color.argb), pen.width, Modifier.size(32.dp, 20.dp))
+        val line = Modifier.size(32.dp, 20.dp)
+        val leaving = change?.leaving
+        if (leaving != null && change.left != Leaving.Onward) {
+            val toward = if (change.left == Leaving.ToPen) -1f else 1f
+            PenLine(
+                Color(leaving.color.argb),
+                leaving.width,
+                line.graphicsLayer {
+                    fadeOut(elapsed(), toward, vertical)
+                },
+            )
+        }
+        PenLine(
+            Color(pen.color.argb),
+            pen.width,
+            when (change?.arrived) {
+                null -> line
+                Arriving.FadesIn -> line.graphicsLayer { fadeIn(elapsed(), vertical) }
+                Arriving.SlidesIn -> line.graphicsLayer { slideIn(elapsed(), vertical) }
+            },
+        )
     }
 }
+
+/** How the recent pens changed when last switched, and how long ago in milliseconds. */
+private class RecentPensMotion(val changes: List<RecentPens.Change?>, val elapsed: Animatable<Float, AnimationVector1D>)
+
+/** Plays [RecentPens.changes] whenever [recents] change. */
+@Composable
+private fun rememberRecentPensMotion(recents: List<Pen>, current: Pen): RecentPensMotion {
+    val shown = remember { arrayOf(recents) }
+    val motion = remember(recents) {
+        RecentPensMotion(RecentPens.changes(shown[0], recents, current), Animatable(0f)).also { shown[0] = recents }
+    }
+    LaunchedEffect(motion) {
+        motion.elapsed.animateTo(SHUFFLE_MILLIS.toFloat(), tween(SHUFFLE_MILLIS, easing = LinearEasing))
+    }
+    return motion
+}
+
+/*
+ * Recent pens that change place fade out together, nudged the way they go: toward the pen if now in
+ * use, otherwise away. Then the new ones fade in, nudged from the pen's side, as the one just left
+ * comes from there. A pen moving on to the next place slides there instead, throughout.
+ */
+
+private fun GraphicsLayerScope.fadeOut(elapsed: Float, toward: Float, vertical: Boolean) {
+    val f = FastOutLinearInEasing.transform((elapsed / FADE_OUT_MILLIS).coerceIn(0f, 1f))
+    alpha = 1f - f
+    shift(toward * ShuffleNudge.toPx() * f, vertical)
+}
+
+private fun GraphicsLayerScope.fadeIn(elapsed: Float, vertical: Boolean) {
+    val f = LinearOutSlowInEasing.transform(((elapsed - FADE_OUT_MILLIS) / FADE_IN_MILLIS).coerceIn(0f, 1f))
+    alpha = f
+    shift(-ShuffleNudge.toPx() * (1f - f), vertical)
+}
+
+/** Speeds up to halfway while the others fade out, and settles as they fade in. */
+private fun GraphicsLayerScope.slideIn(elapsed: Float, vertical: Boolean) {
+    val half = ((if (vertical) RecentPenSize.height else RecentPenSize.width) + ToolSpacing).toPx() / 2
+    val toGo = if (elapsed < FADE_OUT_MILLIS) {
+        half * (2f - FastOutLinearInEasing.transform(elapsed / FADE_OUT_MILLIS))
+    } else {
+        half * (1f - LinearOutSlowInEasing.transform(((elapsed - FADE_OUT_MILLIS) / FADE_IN_MILLIS).coerceAtMost(1f)))
+    }
+    shift(-toGo, vertical)
+}
+
+private fun GraphicsLayerScope.shift(by: Float, vertical: Boolean) {
+    if (vertical) translationY = by else translationX = by
+}
+
+private const val FADE_OUT_MILLIS = 160
+private const val FADE_IN_MILLIS = 200
+private const val SHUFFLE_MILLIS = FADE_OUT_MILLIS + FADE_IN_MILLIS
+private val ShuffleNudge = 14.dp
+private val RecentPenSize = DpSize(48.dp, 44.dp)
+private val ToolSpacing = 4.dp
 
 /** Erases whole strokes the pen touches, until switched off. */
 @Composable
