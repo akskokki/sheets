@@ -1,7 +1,6 @@
 package dev.axu.sheets.reader
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -177,7 +176,7 @@ private fun EraserButton(selected: Boolean, onClick: () -> Unit) {
 
 /**
  * Every button among the drawing tools, so that they all look and respond alike: the selected one
- * stands out, changing over the same way for every tool, and presses all get the same feedback.
+ * stands out, switching over instantly for every tool, and presses all get the same feedback.
  *
  * What a press does is up to [gesture], which reports presses to the interaction source it's given
  * rather than showing feedback of its own. It mustn't depend on whether the tool is selected:
@@ -192,20 +191,13 @@ private fun ToolButton(
     content: @Composable () -> Unit,
 ) {
     val interactions = remember { MutableInteractionSource() }
-    val selection by animateFloatAsState(
-        if (selected) 1f else 0f,
-        tween(SELECTION_MILLIS),
-        label = "selection",
-    )
     Box(
         modifier
             .drawBehind {
-                // Drawn rather than an elevation shadow, which would show through the chip while
-                // it fades.
+                if (!selected) return@drawBehind
                 val corners = CornerRadius(size.minDimension / 2)
-                val edge = SelectedEdgeOffset.toPx()
-                drawRoundRect(SelectedEdgeColor, Offset(0f, edge), size, corners, alpha = selection)
-                drawRoundRect(Color.White, cornerRadius = corners, alpha = selection)
+                drawRoundRect(SelectedEdgeColor, Offset(0f, SelectedEdgeOffset.toPx()), size, corners)
+                drawRoundRect(Color.White, cornerRadius = corners)
             }
             .clip(ToolShape)
             .indication(interactions, ripple())
@@ -227,7 +219,6 @@ private fun Modifier.toolClick(interactions: MutableInteractionSource, onClick: 
 private val ToolShape = RoundedCornerShape(50)
 private val SelectedEdgeColor = Color(0x2E000000)
 private val SelectedEdgeOffset = 1.dp
-private const val SELECTION_MILLIS = 150
 
 /** Color swatches above width choices. */
 @Composable
