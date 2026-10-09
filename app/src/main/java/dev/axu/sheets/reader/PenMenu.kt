@@ -24,8 +24,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.axu.sheets.ink.PenSettings
 import kotlin.math.max
@@ -46,6 +51,7 @@ class PenMenuState(private val onOpen: () -> Unit = {}, private val onClose: () 
     fun close() {
         if (!isOpen) return
         isOpen = false
+        choices.clear()
         onClose()
     }
 
@@ -56,7 +62,79 @@ class PenMenuState(private val onOpen: () -> Unit = {}, private val onClose: () 
 
     /** The toolbar's bounds, in root coordinates; the menu opens just past its edge. */
     var toolbar by mutableStateOf(Rect.Zero)
+
+    /** The choice a drag from the pen button is over, which lifting there would pick. */
+    var highlighted: Any? by mutableStateOf(null)
+        private set
+
+    private class Choice(val bounds: Rect, val select: () -> Unit)
+
+    // Where the open menu's choices are, for picking by dragging from the pen button, which keeps
+    // the pointer from reaching them.
+    private val choices = mutableMapOf<Any, Choice>()
+
+    internal fun onChoicePositioned(key: Any, bounds: Rect, select: () -> Unit) {
+        choices[key] = Choice(bounds, select)
+    }
+
+    internal fun onDrag(point: Offset?) {
+        highlighted = point?.let { choiceAt(it) }
+    }
+
+    /** Picks the choice under [point], if any; returns whether there was one. */
+    internal fun onLift(point: Offset): Boolean {
+        highlighted = null
+        val key = choiceAt(point) ?: return false
+        choices[key]?.select?.invoke()
+        return true
+    }
+
+    private fun choiceAt(point: Offset): Any? = choices.entries.firstOrNull { point in it.value.bounds }?.key
 }
+
+/**
+ * Makes this the pen button: pressing it opens the menu, and pressing it again closes it. Pressing
+ * and dragging into the menu picks the choice lifted over, leaving the menu open for more.
+ */
+fun Modifier.opensPenMenu(menu: PenMenuState): Modifier = this
+    .onGloballyPositioned { menu.anchor = it.boundsInRoot() }
+    .pointerInput(menu) {
+        awaitEachGesture {
+            val down = awaitFirstDown()
+            val wasOpen = menu.isOpen
+            menu.open()
+            var dragging = false
+            while (true) {
+                val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id }
+                if (change == null) {
+                    menu.onDrag(null)
+                    break
+                }
+                if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop) dragging = true
+                val point = menu.anchor.topLeft + change.position
+                if (change.pressed) {
+                    change.consume()
+                    menu.onDrag(point.takeIf { dragging })
+                } else {
+                    val picked = dragging && menu.onLift(point)
+                    if (!picked && !dragging && wasOpen) menu.close()
+                    menu.onDrag(null)
+                    break
+                }
+            }
+        }
+    }
+    .semantics {
+        role = Role.Button
+        onClick {
+            menu.toggle()
+            true
+        }
+    }
+
+/** Makes this a choice in the pen menu, which a drag from the pen button can pick. */
+fun Modifier.penMenuChoice(menu: PenMenuState, key: Any, onSelect: () -> Unit): Modifier =
+    onGloballyPositioned { menu.onChoicePositioned(key, it.boundsInRoot(), onSelect) }
 
 /**
  * The pen menu, opening from the pen button: down from the top bar, or sideways from the side rail.
@@ -79,7 +157,13 @@ fun PenMenu(state: PenMenuState, pen: PenSettings, sideways: Boolean, inkTargets
         content = {
             AnimatedVisibility(state.isOpen, enter = enter, exit = exit) {
                 DisposableEffect(Unit) { onDispose { inkTargets.onExclusionRemoved(PenMenuKey) } }
-                PenMenuPanel(pen, Modifier.onGloballyPositioned { inkTargets.onExclusionPositioned(PenMenuKey, it) })
+                PenMenuPanel(
+                    pen,
+                    state,
+                    Modifier.onGloballyPositioned {
+                        inkTargets.onExclusionPositioned(PenMenuKey, it)
+                    },
+                )
             }
         },
         modifier = Modifier.fillMaxSize(),

@@ -33,8 +33,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -86,11 +84,10 @@ private fun PenButton(pen: PenSettings, menu: PenMenuState, vertical: Boolean) {
     // The arrow points to where the menu opens, and back once it's open.
     val turn by animateFloatAsState(if (menu.isOpen) 180f else 0f, label = "arrow")
     val modifier = Modifier
-        .onGloballyPositioned { menu.anchor = it.boundsInRoot() }
         .shadow(1.dp, CircleShape)
         .clip(RoundedCornerShape(50))
         .background(Color.White)
-        .clickable { menu.toggle() }
+        .opensPenMenu(menu)
         .semantics { contentDescription = "Pen: ${pen.color.name}, ${pen.width.name}" }
     val content: @Composable () -> Unit = {
         PenLine(Color(pen.color.argb), pen.width, Modifier.size(40.dp, 24.dp))
@@ -129,12 +126,14 @@ private fun RecentPenButton(pen: Pen, onClick: () -> Unit) {
 
 /** Color swatches above width choices. */
 @Composable
-fun PenMenuPanel(pen: PenSettings, modifier: Modifier = Modifier) {
+fun PenMenuPanel(pen: PenSettings, menu: PenMenuState, modifier: Modifier = Modifier) {
     Surface(modifier, shape = RoundedCornerShape(18.dp), color = Color.White, shadowElevation = 6.dp) {
         Column(Modifier.width(IntrinsicSize.Min).padding(8.dp)) {
             Row {
                 for (color in Pens.colors) {
                     Choice(
+                        menu,
+                        key = color,
                         selected = pen.color == color,
                         description = "${color.name} pen",
                         onSelect = { pen.select(color) },
@@ -148,6 +147,8 @@ fun PenMenuPanel(pen: PenSettings, modifier: Modifier = Modifier) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceAround) {
                 for (width in PenWidth.entries) {
                     Choice(
+                        menu,
+                        key = width,
                         selected = pen.width == width,
                         description = "${width.name} line",
                         onSelect = { pen.select(width) },
@@ -183,10 +184,13 @@ private const val LINE_WIDTH_PER_POINT = 2f
 
 private val ToolGroupColor = Color(0xFFEEF0F3)
 private val DividerColor = Color(0xFFE6E6E3)
+private val HighlightColor = Color(0xFFE3E8F2)
 
 /** A 44dp tall touch target with a ring around it when selected. */
 @Composable
 private fun Choice(
+    menu: PenMenuState,
+    key: Any,
     selected: Boolean,
     description: String,
     onSelect: () -> Unit,
@@ -197,7 +201,9 @@ private fun Choice(
     Box(
         Modifier
             .size(width, 44.dp)
+            .penMenuChoice(menu, key, onSelect)
             .clip(shape)
+            .then(if (menu.highlighted == key) Modifier.background(HighlightColor) else Modifier)
             .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
