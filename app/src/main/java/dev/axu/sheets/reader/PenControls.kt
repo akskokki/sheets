@@ -250,8 +250,9 @@ private fun GraphicsLayerScope.shift(by: Float, vertical: Boolean) {
     if (vertical) translationY = by else translationX = by
 }
 
-private const val FADE_OUT_MILLIS = 160
-private const val FADE_IN_MILLIS = 200
+// Designed to be seen with Android's animation speed at 0.5x, which halves them.
+private const val FADE_OUT_MILLIS = 320
+private const val FADE_IN_MILLIS = 400
 private const val SHUFFLE_MILLIS = FADE_OUT_MILLIS + FADE_IN_MILLIS
 private val ShuffleNudge = 14.dp
 private val RecentPenSize = DpSize(48.dp, 44.dp)
