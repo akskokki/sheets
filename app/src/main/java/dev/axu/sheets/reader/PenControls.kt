@@ -1,10 +1,13 @@
 package dev.axu.sheets.reader
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,13 +24,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
@@ -36,6 +45,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -109,10 +119,8 @@ private fun PenButton(
 ) {
     // The arrow points to where the menu opens, and back once it's open.
     val turn by animateFloatAsState(if (menu.isOpen) 180f else 0f, label = "arrow")
-    val modifier = Modifier
-        .selectedTool(selected)
-        .then(if (selected) Modifier.opensPenMenu(menu) else Modifier.clickable(onClick = onSelect))
-        .semantics { contentDescription = "Pen: ${pen.color.name}, ${pen.width.name}" }
+    val isSelected by rememberUpdatedState(selected)
+    val select by rememberUpdatedState(onSelect)
     val content: @Composable () -> Unit = {
         PenLine(Color(pen.color.argb), pen.width, Modifier.size(40.dp, 24.dp))
         Icon(
@@ -123,26 +131,32 @@ private fun PenButton(
                 .rotate(turn + if (vertical) -90f else 0f),
         )
     }
-    if (vertical) {
-        Column(modifier.size(48.dp, 56.dp), Arrangement.Center, Alignment.CenterHorizontally) { content() }
-    } else {
-        Row(
-            modifier.height(44.dp).padding(start = 12.dp, end = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) { content() }
+    ToolButton(
+        selected,
+        description = "Pen: ${pen.color.name}, ${pen.width.name}",
+        gesture = { interactions ->
+            opensPenMenu(menu, interactions, isSelected = { isSelected }, onSelect = { select() })
+        },
+        modifier = if (vertical) Modifier.size(48.dp, 56.dp) else Modifier.height(44.dp),
+    ) {
+        if (vertical) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) { content() }
+        } else {
+            Row(Modifier.padding(start = 12.dp, end = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                content()
+            }
+        }
     }
 }
 
 /** A pen used before, to switch back to in one tap. */
 @Composable
 private fun RecentPenButton(pen: Pen, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .size(48.dp, 44.dp)
-            .clip(RoundedCornerShape(50))
-            .clickable(onClick = onClick)
-            .semantics { contentDescription = "Switch to ${pen.color.name}, ${pen.width.name}" },
-        contentAlignment = Alignment.Center,
+    ToolButton(
+        selected = false,
+        description = "Switch to ${pen.color.name}, ${pen.width.name}",
+        gesture = { interactions -> toolClick(interactions, onClick) },
+        modifier = Modifier.size(48.dp, 44.dp),
     ) {
         PenLine(Color(pen.color.argb), pen.width, Modifier.size(32.dp, 20.dp))
     }
@@ -151,24 +165,69 @@ private fun RecentPenButton(pen: Pen, onClick: () -> Unit) {
 /** Erases whole strokes the pen touches, until switched off. */
 @Composable
 private fun EraserButton(selected: Boolean, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .size(44.dp)
-            .selectedTool(selected)
-            .selectable(selected = selected, onClick = onClick)
-            .semantics { contentDescription = "Eraser" },
-        contentAlignment = Alignment.Center,
+    ToolButton(
+        selected,
+        description = "Eraser",
+        gesture = { interactions -> toolClick(interactions, onClick) },
+        modifier = Modifier.size(44.dp),
     ) {
         Icon(painterResource(R.drawable.ic_eraser), contentDescription = null, Modifier.size(22.dp))
     }
 }
 
-/** The tool in use stands out from the others. */
-private fun Modifier.selectedTool(selected: Boolean): Modifier = if (selected) {
-    shadow(1.dp, CircleShape).clip(RoundedCornerShape(50)).background(Color.White)
-} else {
-    clip(RoundedCornerShape(50))
+/**
+ * Every button among the drawing tools, so that they all look and respond alike: the selected one
+ * stands out, changing over the same way for every tool, and presses all get the same feedback.
+ *
+ * What a press does is up to [gesture], which reports presses to the interaction source it's given
+ * rather than showing feedback of its own. It mustn't depend on whether the tool is selected:
+ * swapping it when a tap selects the tool would cut that tap's feedback short.
+ */
+@Composable
+private fun ToolButton(
+    selected: Boolean,
+    description: String,
+    gesture: Modifier.(MutableInteractionSource) -> Modifier,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val interactions = remember { MutableInteractionSource() }
+    val selection by animateFloatAsState(
+        if (selected) 1f else 0f,
+        tween(SELECTION_MILLIS),
+        label = "selection",
+    )
+    Box(
+        modifier
+            .drawBehind {
+                // Drawn rather than an elevation shadow, which would show through the chip while
+                // it fades.
+                val corners = CornerRadius(size.minDimension / 2)
+                val edge = SelectedEdgeOffset.toPx()
+                drawRoundRect(SelectedEdgeColor, Offset(0f, edge), size, corners, alpha = selection)
+                drawRoundRect(Color.White, cornerRadius = corners, alpha = selection)
+            }
+            .clip(ToolShape)
+            .indication(interactions, ripple())
+            .gesture(interactions)
+            .semantics {
+                contentDescription = description
+                this.selected = selected
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        content()
+    }
 }
+
+/** A tool's gesture for a plain tap. */
+private fun Modifier.toolClick(interactions: MutableInteractionSource, onClick: () -> Unit): Modifier =
+    clickable(interactions, indication = null, onClick = onClick)
+
+private val ToolShape = RoundedCornerShape(50)
+private val SelectedEdgeColor = Color(0x2E000000)
+private val SelectedEdgeOffset = 1.dp
+private const val SELECTION_MILLIS = 150
 
 /** Color swatches above width choices. */
 @Composable
