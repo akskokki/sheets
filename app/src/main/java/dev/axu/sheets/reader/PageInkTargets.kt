@@ -19,6 +19,7 @@ class PageInkTargets(
     /** The part of each page shown, in points. */
     private val crops: List<RectF>,
     private val brush: () -> Brush,
+    private val onStrokeStarted: () -> Unit,
     private val onStrokeFinished: (page: Int, stroke: Stroke) -> Unit,
 ) : InkTargetResolver {
     // Coordinates rather than rectangles: zooming changes where a page is drawn without laying it
@@ -56,7 +57,7 @@ class PageInkTargets(
                 postScale(pointsPerPx, pointsPerPx)
                 postTranslate(crop.left, crop.top)
             }
-            return InkTarget(brush(), hostToPage) { stroke -> onStrokeFinished(page, stroke) }
+            return InkTarget(brush(), hostToPage, onStrokeStarted) { stroke -> onStrokeFinished(page, stroke) }
         }
         return null
     }

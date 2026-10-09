@@ -47,4 +47,8 @@ The two builds are separate apps with separate data. Sheets Dev keeps its folder
   (once the app has write access; the library asks for it). The newest copy wins on load, so notes
   survive uninstalling: pick the same folder again and they're back. The file also records the
   order strokes were drawn in, so undo reaches back across sessions.
-- **Pens** (`ink/Pens.kt`): a few colors and three widths, picked in the toolbar and remembered.
+- **Pens** (`ink/Pens.kt`): a few colors and three widths, remembered. The toolbar shows the pen in
+  use; tapping it opens a menu below it (beside it, in the side rail) that stays open while you
+  choose. Writing on the page, a touch anywhere else or tapping the pen again closes it. The menu
+  floats above the reader (`PenMenu`) rather than in the clipped toolbar, and the touch that closes
+  it doesn't also turn the page.

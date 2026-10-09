@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -111,15 +112,25 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
     val container = LocalContext.current.appContainer
     val pen = container.pen
     val settings = container.settings
+    val penMenu = remember { PenMenuState() }
     val inkTargets = remember(document) {
-        PageInkTargets(state.crops, brush = { pen.brush }, onStrokeFinished = viewModel::onStrokeFinished)
+        PageInkTargets(
+            state.crops,
+            brush = { pen.brush },
+            // Writing on the page is the natural way to be done with the pen menu.
+            onStrokeStarted = { penMenu.isOpen = false },
+            onStrokeFinished = viewModel::onStrokeFinished,
+        )
     }
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.settledPage }.collect { page ->
             zoom.reset()
+            penMenu.isOpen = false
             viewModel.onPageSettled(page)
         }
     }
+
+    LaunchedEffect(chromeVisible) { if (!chromeVisible) penMenu.isOpen = false }
 
     val inkHost = LocalInkHost.current
     DisposableEffect(inkHost, inkTargets) {
@@ -215,15 +226,20 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
             }
         }
         val useRail = (maxWidth - with(LocalDensity.current) { widestPage.toDp() }) / 2 >= ToolbarRailWidth
-        val toolbarModifier = Modifier.onGloballyPositioned { inkTargets.onExclusionPositioned(ToolbarKey, it) }
+        val toolbarModifier = Modifier.onGloballyPositioned {
+            inkTargets.onExclusionPositioned(ToolbarKey, it)
+            penMenu.toolbar = it.boundsInRoot()
+        }
+        if (penMenu.isOpen) ClosePenMenuOnTouch(penMenu)
         AnimatedVisibility(chromeVisible, enter = fadeIn(), exit = fadeOut()) {
             DisposableEffect(Unit) { onDispose { inkTargets.onExclusionRemoved(ToolbarKey) } }
             if (useRail) {
-                ReaderSideRail(toolbarState, toolbarActions, pen, toolbarModifier)
+                ReaderSideRail(toolbarState, toolbarActions, pen, penMenu, toolbarModifier)
             } else {
-                ReaderTopBar(toolbarState, toolbarActions, pen, toolbarModifier)
+                ReaderTopBar(toolbarState, toolbarActions, pen, penMenu, toolbarModifier)
             }
         }
+        if (chromeVisible) PenMenu(penMenu, pen, sideways = useRail, inkTargets)
 
         TransientMessage(message, onDismiss = { message = null }, Modifier.align(Alignment.BottomCenter))
     }

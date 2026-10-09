@@ -21,6 +21,7 @@ class InkTarget(
     val brush: Brush,
     /** Maps host (window) coordinates to the target's coordinate space, e.g. PDF points. */
     val hostToTarget: Matrix,
+    val onStrokeStarted: () -> Unit,
     val onStrokeFinished: (Stroke) -> Unit,
 )
 
@@ -112,6 +113,7 @@ class InkHostLayout(
             val id = wetInk.startStroke(event, event.getPointerId(0), target.brush, target.hostToTarget)
             targets[id] = target
             activeStroke = id
+            target.onStrokeStarted()
             return true
         }
 
