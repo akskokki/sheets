@@ -5,8 +5,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,7 +23,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -154,7 +153,7 @@ private fun RecentPenButton(pen: Pen, onClick: () -> Unit) {
     ToolButton(
         selected = false,
         description = "Switch to ${pen.color.name}, ${pen.width.name}",
-        gesture = { interactions -> toolClick(interactions, onClick) },
+        gesture = { toolClick(onClick) },
         modifier = Modifier.size(48.dp, 44.dp),
     ) {
         PenLine(Color(pen.color.argb), pen.width, Modifier.size(32.dp, 20.dp))
@@ -167,7 +166,7 @@ private fun EraserButton(selected: Boolean, onClick: () -> Unit) {
     ToolButton(
         selected,
         description = "Eraser",
-        gesture = { interactions -> toolClick(interactions, onClick) },
+        gesture = { toolClick(onClick) },
         modifier = Modifier.size(44.dp),
     ) {
         Icon(painterResource(R.drawable.ic_eraser), contentDescription = null, Modifier.size(22.dp))
@@ -175,12 +174,13 @@ private fun EraserButton(selected: Boolean, onClick: () -> Unit) {
 }
 
 /**
- * Every button among the drawing tools, so that they all look and respond alike: the selected one
- * stands out, switching over instantly for every tool, and presses all get the same feedback.
+ * Every button among the drawing tools, so that they all look and respond alike. Nothing animates:
+ * the selected tool stands out, switching over instantly, and a press shows only while held.
  *
- * What a press does is up to [gesture], which reports presses to the interaction source it's given
- * rather than showing feedback of its own. It mustn't depend on whether the tool is selected:
- * swapping it when a tap selects the tool would cut that tap's feedback short.
+ * What a press does is up to [gesture], which reports the presses that deserve feedback to the
+ * interaction source it's given, rather than showing any of its own. Switching tools doesn't: the
+ * switch is the response. The gesture mustn't depend on whether the tool is selected, so a press
+ * that selects it is still handled by the same gesture when it ends.
  */
 @Composable
 private fun ToolButton(
@@ -191,16 +191,17 @@ private fun ToolButton(
     content: @Composable () -> Unit,
 ) {
     val interactions = remember { MutableInteractionSource() }
+    val pressed by interactions.collectIsPressedAsState()
     Box(
         modifier
             .drawBehind {
-                if (!selected) return@drawBehind
                 val corners = CornerRadius(size.minDimension / 2)
-                drawRoundRect(SelectedEdgeColor, Offset(0f, SelectedEdgeOffset.toPx()), size, corners)
-                drawRoundRect(Color.White, cornerRadius = corners)
+                if (selected) {
+                    drawRoundRect(SelectedEdgeColor, Offset(0f, SelectedEdgeOffset.toPx()), size, corners)
+                    drawRoundRect(Color.White, cornerRadius = corners)
+                }
+                if (pressed) drawRoundRect(PressedColor, cornerRadius = corners)
             }
-            .clip(ToolShape)
-            .indication(interactions, ripple())
             .gesture(interactions)
             .semantics {
                 contentDescription = description
@@ -212,13 +213,14 @@ private fun ToolButton(
     }
 }
 
-/** A tool's gesture for a plain tap. */
-private fun Modifier.toolClick(interactions: MutableInteractionSource, onClick: () -> Unit): Modifier =
-    clickable(interactions, indication = null, onClick = onClick)
+/** A tool's gesture for a plain tap, which switches tools and so shows no press. */
+private fun Modifier.toolClick(onClick: () -> Unit): Modifier =
+    clickable(interactionSource = null, indication = null, onClick = onClick)
 
 private val ToolShape = RoundedCornerShape(50)
 private val SelectedEdgeColor = Color(0x2E000000)
 private val SelectedEdgeOffset = 1.dp
+private val PressedColor = Color(0x1A000000)
 
 /** Color swatches above width choices. */
 @Composable

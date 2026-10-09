@@ -97,7 +97,8 @@ class PenMenuState(private val onOpen: () -> Unit = {}, private val onClose: () 
 /**
  * Makes this the pen button: pressing it opens the menu, and pressing it again closes it. Pressing
  * and dragging into the menu picks the choice lifted over, leaving the menu open for more. While the
- * pen isn't [isSelected], a tap only calls [onSelect]. Presses are reported to [interactions].
+ * pen isn't [isSelected], a tap only calls [onSelect]. Presses that work the menu are reported to
+ * [interactions]; one that only switches back to the pen isn't, as switching tools is its own response.
  */
 fun Modifier.opensPenMenu(
     menu: PenMenuState,
@@ -109,9 +110,9 @@ fun Modifier.opensPenMenu(
     .pointerInput(menu, interactions) {
         awaitEachGesture {
             val down = awaitFirstDown()
-            val press = PressInteraction.Press(down.position)
-            interactions?.tryEmit(press)
             val selected = isSelected()
+            val press = if (selected) PressInteraction.Press(down.position) else null
+            press?.let { interactions?.tryEmit(it) }
             val wasOpen = menu.isOpen
             if (selected) menu.open()
             var dragging = false
@@ -136,7 +137,9 @@ fun Modifier.opensPenMenu(
                 }
             } finally {
                 menu.onDrag(null)
-                interactions?.tryEmit(if (lifted) PressInteraction.Release(press) else PressInteraction.Cancel(press))
+                press?.let {
+                    interactions?.tryEmit(if (lifted) PressInteraction.Release(it) else PressInteraction.Cancel(it))
+                }
             }
         }
     }
