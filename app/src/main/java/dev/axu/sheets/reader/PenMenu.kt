@@ -8,10 +8,25 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
@@ -20,19 +35,26 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.axu.sheets.ink.PenSettings
+import dev.axu.sheets.ink.PenWidth
+import dev.axu.sheets.ink.Pens
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -95,7 +117,8 @@ class PenMenuState(private val onOpen: () -> Unit = {}, private val onClose: () 
 /**
  * Makes this the pen button: pressing it opens the menu, and pressing it again closes it. Pressing
  * and dragging into the menu picks the choice lifted over, leaving the menu open for more. While the
- * pen isn't [isSelected], a tap only calls [onSelect].
+ * pen isn't [isSelected], a tap only calls [onSelect]. The gesture keeps the first [isSelected] and
+ * [onSelect] it's given, so they must read the current state.
  */
 fun Modifier.opensPenMenu(
     menu: PenMenuState,
@@ -216,3 +239,78 @@ private val MenuGap = 8.dp
 /** From the top of the menu to the middle of its first row: padding plus half a choice. */
 private val MenuFirstRowCenter = 30.dp
 private const val MENU_ANIMATION_MILLIS = 150
+
+/** Color swatches above width choices. */
+@Composable
+fun PenMenuPanel(pen: PenSettings, menu: PenMenuState, modifier: Modifier = Modifier) {
+    Surface(modifier, shape = RoundedCornerShape(18.dp), color = Color.White, shadowElevation = 6.dp) {
+        Column(Modifier.width(IntrinsicSize.Min).padding(8.dp)) {
+            Row {
+                for (color in Pens.colors) {
+                    Choice(
+                        menu,
+                        key = color,
+                        selected = pen.color == color,
+                        description = "${color.name} pen",
+                        onSelect = { pen.select(color) },
+                        shape = CircleShape,
+                    ) {
+                        Box(Modifier.size(24.dp).clip(CircleShape).background(Color(color.argb)))
+                    }
+                }
+            }
+            HorizontalDivider(Modifier.padding(horizontal = 6.dp, vertical = 4.dp), color = DividerColor)
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceAround) {
+                for (width in PenWidth.entries) {
+                    Choice(
+                        menu,
+                        key = width,
+                        selected = pen.width == width,
+                        description = "${width.name} line",
+                        onSelect = { pen.select(width) },
+                        shape = RoundedCornerShape(50),
+                        width = 72.dp,
+                    ) {
+                        PenLine(Color(pen.color.argb), width, Modifier.size(44.dp, 20.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** A 44dp tall touch target with a ring around it when selected. */
+@Composable
+private fun Choice(
+    menu: PenMenuState,
+    key: Any,
+    selected: Boolean,
+    description: String,
+    onSelect: () -> Unit,
+    shape: Shape,
+    width: Dp = 44.dp,
+    content: @Composable () -> Unit,
+) {
+    Box(
+        Modifier
+            .size(width, 44.dp)
+            .penMenuChoice(menu, key, onSelect)
+            .clip(shape)
+            .then(if (menu.highlighted == key) Modifier.background(HighlightColor) else Modifier)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            Modifier
+                .size(width - 10.dp, 34.dp)
+                .then(if (selected) Modifier.border(2.dp, Color(0xFF1F2937), shape) else Modifier),
+            contentAlignment = Alignment.Center,
+        ) {
+            content()
+        }
+    }
+}
+
+private val DividerColor = Color(0xFFE6E6E3)
+private val HighlightColor = Color(0xFFE3E8F2)

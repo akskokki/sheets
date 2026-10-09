@@ -52,10 +52,12 @@ The two builds are separate apps with separate data. Sheets Dev keeps its folder
   order strokes were drawn in, so undo reaches back across sessions.
 - **Pens** (`ink/Pens.kt`): a few colors and three widths, remembered. The toolbar shows the pen in
   use; tapping it opens a menu below it (beside it, in the side rail) that stays open while you
-  choose. Pressing it and dragging into the menu picks whatever the pen is lifted over. Writing on the page, a touch anywhere else or tapping the pen again closes it. The menu
-  floats above the reader (`PenMenu`) rather than in the clipped toolbar, and the touch that closes
-  it doesn't also turn the page.
+  choose. Pressing it and dragging into the menu picks whatever the pen is lifted over. Writing on
+  the page, a touch anywhere else or tapping the pen again closes it. The menu floats above the
+  reader (`PenMenu`) rather than in the clipped toolbar, and the touch that closes it doesn't also
+  turn the page.
   The last pens used sit beside it (`RecentPens`, optional in settings), to switch back in one
   tap; only the pen finally chosen in the menu counts, not every color tried on the way. The pen
   button changes at once, while recent pens that change place fade over toward their new places,
-  or slide one place on (`RecentPens.changes`).
+  or slide one place on (`RecentPenMoves`). The selected tool's chip slides between the pen and
+  the eraser (`ToolGroup`).
