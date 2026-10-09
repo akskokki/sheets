@@ -8,16 +8,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -98,5 +103,18 @@ private fun EditButtons(state: ToolbarState, actions: ToolbarActions) {
 
 @Composable
 private fun PageNumber(state: ToolbarState, modifier: Modifier = Modifier) {
-    Text("${state.page} / ${state.pageCount}", style = MaterialTheme.typography.labelLarge, modifier = modifier)
+    // Tabular digits all have one width, so the last page's label is the widest. Holding that
+    // width keeps the toolbar from shifting as the page changes.
+    val style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum")
+    val measurer = rememberTextMeasurer()
+    val widest =
+        remember(measurer, state.pageCount, style) {
+            measurer.measure("${state.pageCount} / ${state.pageCount}", style).size.width
+        }
+    Text(
+        "${state.page} / ${state.pageCount}",
+        style = style,
+        textAlign = TextAlign.End,
+        modifier = modifier.widthIn(min = with(LocalDensity.current) { widest.toDp() }),
+    )
 }
