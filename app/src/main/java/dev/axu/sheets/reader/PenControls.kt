@@ -46,20 +46,37 @@ import dev.axu.sheets.ink.PenWidth
 import dev.axu.sheets.ink.Pens
 
 /**
- * The toolbar's drawing tools: the pen, and optionally the ones used before it to switch back to, in
- * a row or (for the side rail) a column.
+ * The toolbar's drawing tools: the pen, optionally the ones used before it to switch back to, and
+ * the eraser, in a row or (for the side rail) a column.
  */
 @Composable
-fun DrawingTools(pen: PenSettings, menu: PenMenuState, showRecents: Boolean, vertical: Boolean) {
+fun DrawingTools(
+    pen: PenSettings,
+    menu: PenMenuState,
+    showRecents: Boolean,
+    erasing: Boolean,
+    onErasingChange: (Boolean) -> Unit,
+    vertical: Boolean,
+) {
     ToolGroup(vertical) {
-        PenButton(pen, menu, vertical)
+        PenButton(pen, menu, selected = !erasing, onSelect = { onErasingChange(false) }, vertical)
         if (showRecents) {
             for (recent in pen.recents) {
                 RecentPenButton(recent) {
                     menu.close()
                     pen.switchTo(recent)
+                    onErasingChange(false)
                 }
             }
+        }
+        Box(
+            Modifier.background(
+                SeparatorColor,
+            ).then(if (vertical) Modifier.size(24.dp, 1.dp) else Modifier.size(1.dp, 24.dp)),
+        )
+        EraserButton(selected = erasing) {
+            menu.close()
+            onErasingChange(!erasing)
         }
     }
 }
@@ -78,16 +95,23 @@ private fun ToolGroup(vertical: Boolean, content: @Composable () -> Unit) {
     }
 }
 
-/** The pen in use, drawn as a short line; tapping it opens [menu] to change its color and width. */
+/**
+ * The pen in use, drawn as a short line; tapping it opens [menu] to change its color and width. While
+ * another tool is [selected], tapping it only switches back to the pen.
+ */
 @Composable
-private fun PenButton(pen: PenSettings, menu: PenMenuState, vertical: Boolean) {
+private fun PenButton(
+    pen: PenSettings,
+    menu: PenMenuState,
+    selected: Boolean,
+    onSelect: () -> Unit,
+    vertical: Boolean,
+) {
     // The arrow points to where the menu opens, and back once it's open.
     val turn by animateFloatAsState(if (menu.isOpen) 180f else 0f, label = "arrow")
     val modifier = Modifier
-        .shadow(1.dp, CircleShape)
-        .clip(RoundedCornerShape(50))
-        .background(Color.White)
-        .opensPenMenu(menu)
+        .selectedTool(selected)
+        .then(if (selected) Modifier.opensPenMenu(menu) else Modifier.clickable(onClick = onSelect))
         .semantics { contentDescription = "Pen: ${pen.color.name}, ${pen.width.name}" }
     val content: @Composable () -> Unit = {
         PenLine(Color(pen.color.argb), pen.width, Modifier.size(40.dp, 24.dp))
@@ -122,6 +146,28 @@ private fun RecentPenButton(pen: Pen, onClick: () -> Unit) {
     ) {
         PenLine(Color(pen.color.argb), pen.width, Modifier.size(32.dp, 20.dp))
     }
+}
+
+/** Erases whole strokes the pen touches, until switched off. */
+@Composable
+private fun EraserButton(selected: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(44.dp)
+            .selectedTool(selected)
+            .selectable(selected = selected, onClick = onClick)
+            .semantics { contentDescription = "Eraser" },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(painterResource(R.drawable.ic_eraser), contentDescription = null, Modifier.size(22.dp))
+    }
+}
+
+/** The tool in use stands out from the others. */
+private fun Modifier.selectedTool(selected: Boolean): Modifier = if (selected) {
+    shadow(1.dp, CircleShape).clip(RoundedCornerShape(50)).background(Color.White)
+} else {
+    clip(RoundedCornerShape(50))
 }
 
 /** Color swatches above width choices. */
@@ -184,6 +230,7 @@ private const val LINE_WIDTH_PER_POINT = 2f
 
 private val ToolGroupColor = Color(0xFFEEF0F3)
 private val DividerColor = Color(0xFFE6E6E3)
+private val SeparatorColor = Color(0xFFD5D8DD)
 private val HighlightColor = Color(0xFFE3E8F2)
 
 /** A 44dp tall touch target with a ring around it when selected. */

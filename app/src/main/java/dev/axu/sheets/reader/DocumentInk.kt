@@ -58,6 +58,30 @@ class DocumentInk(saved: Annotations) {
         if (indexed.isNotEmpty()) perform(Edit.Erase(page, indexed))
     }
 
+    /** Starts erasing strokes on [page] one after another, to be undone together. */
+    fun startErasing(page: Int) = EraseGesture(page)
+
+    /** Strokes erased by one movement of the eraser: undone as one edit, however many it passed over. */
+    inner class EraseGesture internal constructor(private val page: Int) {
+        private var edit: Edit.Erase? = null
+
+        /** Erases [strokes] (which must be on [page]) along with those erased before. */
+        fun erase(strokes: Collection<Stroke>) {
+            val previous = edit
+            // Grow the gesture's edit while it's the latest, rather than adding one per stroke.
+            val all = if (previous != null && undoStack.lastOrNull() === previous) {
+                undoStack.removeAt(undoStack.lastIndex)
+                revert(previous)
+                previous.strokes.map { it.value } + strokes
+            } else {
+                strokes
+            }
+            val indexed = strokesOn(page).withIndex().filter { it.value in all }
+            if (indexed.isEmpty()) return
+            edit = Edit.Erase(page, indexed).also(::perform)
+        }
+    }
+
     /** Reverts the most recent edit; returns the page it was on, or null if there was nothing to undo. */
     fun undo(): Int? {
         val edit = undoStack.removeLastOrNull() ?: return null

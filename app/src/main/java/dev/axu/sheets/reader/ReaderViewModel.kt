@@ -12,6 +12,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.axu.sheets.AppContainer
 import dev.axu.sheets.ink.ScratchOut
+import dev.axu.sheets.ink.StrokeEraser
 import dev.axu.sheets.pdf.PageRenderer
 import dev.axu.sheets.pdf.PdfDocument
 import kotlinx.coroutines.CancellationException
@@ -84,6 +85,35 @@ class ReaderViewModel(private val uri: Uri, private val container: AppContainer)
             erasures += Erasure(page, erased + stroke)
         }
         save(ready)
+    }
+
+    /** Starts erasing whole strokes on [page] wherever the eraser passes; see [StrokeEraser]. */
+    fun startErasing(page: Int): PageEraser? {
+        val ready = state as? ReaderState.Ready ?: return null
+        val gesture = ready.ink.startErasing(page)
+        return object : PageEraser {
+            private var lastX = Float.NaN
+            private var lastY = Float.NaN
+            private var erasedAny = false
+
+            override fun moveTo(x: Float, y: Float) {
+                val touched = if (lastX.isNaN()) {
+                    StrokeEraser.touched(x, y, x, y, ready.ink.strokesOn(page))
+                } else {
+                    StrokeEraser.touched(lastX, lastY, x, y, ready.ink.strokesOn(page))
+                }
+                lastX = x
+                lastY = y
+                if (touched.isEmpty()) return
+                gesture.erase(touched)
+                erasures += Erasure(page, touched)
+                erasedAny = true
+            }
+
+            override fun finish() {
+                if (erasedAny) save(ready)
+            }
+        }
     }
 
     fun onErasureFaded(erasure: Erasure) {

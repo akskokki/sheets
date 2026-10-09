@@ -15,13 +15,17 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -44,11 +48,15 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.ink.rendering.android.canvas.CanvasStrokeRenderer
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.axu.sheets.R
 import dev.axu.sheets.appContainer
 import dev.axu.sheets.ink.LocalInkHost
 import dev.axu.sheets.pdf.size
@@ -57,6 +65,7 @@ import kotlinx.coroutines.launch
 
 private val Backdrop = Color(0xFFE6E6EA)
 private val ToolbarKey = Any()
+private val EraserReminderKey = Any()
 private const val ERASE_FADE_MILLIS = 180
 private const val MESSAGE_MILLIS = 900L
 
@@ -114,13 +123,16 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
     val settings = container.settings
     // Only the pen finally chosen in the menu counts as used, not every color tried on the way.
     val penMenu = remember { PenMenuState(onOpen = pen::startChoosing, onClose = pen::doneChoosing) }
+    var erasing by rememberSaveable { mutableStateOf(false) }
     val inkTargets = remember(document) {
         PageInkTargets(
             state.crops,
             brush = { pen.brush },
+            erasing = { erasing },
             // Writing on the page is the natural way to be done with the pen menu.
             onStrokeStarted = penMenu::close,
             onStrokeFinished = viewModel::onStrokeFinished,
+            startErasing = viewModel::startErasing,
         )
     }
     LaunchedEffect(pagerState) {
@@ -236,17 +248,48 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
             DisposableEffect(Unit) { onDispose { inkTargets.onExclusionRemoved(ToolbarKey) } }
             if (useRail) {
                 ReaderSideRail(toolbarState, toolbarActions, toolbarModifier) {
-                    DrawingTools(pen, penMenu, settings.showRecentPens, vertical = true)
+                    DrawingTools(pen, penMenu, settings.showRecentPens, erasing, { erasing = it }, vertical = true)
                 }
             } else {
                 ReaderTopBar(toolbarState, toolbarActions, toolbarModifier) {
-                    DrawingTools(pen, penMenu, settings.showRecentPens, vertical = false)
+                    DrawingTools(pen, penMenu, settings.showRecentPens, erasing, { erasing = it }, vertical = false)
                 }
             }
         }
         if (chromeVisible) PenMenu(penMenu, pen, sideways = useRail, inkTargets)
+        // With the toolbar hidden, there'd be no sign the pen erases.
+        AnimatedVisibility(
+            erasing && !chromeVisible,
+            Modifier.align(Alignment.TopEnd).padding(16.dp),
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            DisposableEffect(Unit) { onDispose { inkTargets.onExclusionRemoved(EraserReminderKey) } }
+            EraserReminder(
+                onClick = { erasing = false },
+                Modifier.onGloballyPositioned { inkTargets.onExclusionPositioned(EraserReminderKey, it) },
+            )
+        }
 
         TransientMessage(message, onDismiss = { message = null }, Modifier.align(Alignment.BottomCenter))
+    }
+}
+
+/** Shows the eraser is on while the toolbar is hidden; tapping it switches back to the pen. */
+@Composable
+private fun EraserReminder(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier
+            .size(48.dp)
+            .semantics { contentDescription = "Erasing. Switch back to the pen" },
+        shape = CircleShape,
+        color = Color.White,
+        shadowElevation = 3.dp,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(painterResource(R.drawable.ic_eraser), contentDescription = null, Modifier.size(22.dp))
+        }
     }
 }
 

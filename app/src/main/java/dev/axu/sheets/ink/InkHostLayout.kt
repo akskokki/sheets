@@ -16,14 +16,27 @@ import androidx.ink.brush.Brush
 import androidx.ink.strokes.Stroke
 import androidx.input.motionprediction.MotionEventPredictor
 
-/** Where a stylus stroke lands: the brush to use and how to map screen input into the target. */
-class InkTarget(
-    val brush: Brush,
+/** Where a stylus stroke lands, and what it does there: draw, or erase. */
+sealed interface InkTarget {
     /** Maps host (window) coordinates to the target's coordinate space, e.g. PDF points. */
-    val hostToTarget: Matrix,
-    val onStrokeStarted: () -> Unit,
-    val onStrokeFinished: (Stroke) -> Unit,
-)
+    val hostToTarget: Matrix
+    val onStarted: () -> Unit
+
+    class Draw(
+        val brush: Brush,
+        override val hostToTarget: Matrix,
+        override val onStarted: () -> Unit,
+        val onStrokeFinished: (Stroke) -> Unit,
+    ) : InkTarget
+
+    /** No ink is drawn; the target hears where the stylus goes, in its own coordinates. */
+    class Erase(
+        override val hostToTarget: Matrix,
+        override val onStarted: () -> Unit,
+        val onMove: (x: Float, y: Float) -> Unit,
+        val onFinished: () -> Unit,
+    ) : InkTarget
+}
 
 fun interface InkTargetResolver {
     /** The target under ([x], [y]) in host coordinates, or null if the stylus should act like a finger there. */
@@ -37,7 +50,7 @@ val LocalInkHost = staticCompositionLocalOf<InkHostLayout> { error("No InkHostLa
  *
  * Stylus input that starts over an [InkTarget] never reaches the content; it's drawn as wet ink by
  * a front-buffered [InProgressStrokesView] layered above the content (lowest possible latency), then
- * handed to the target when finished. All other input, including the stylus outside of targets,
+ * handed to the target when finished. Or, for a target that erases, passed on as it moves. All other input, including the stylus outside of targets,
  * goes to the content as usual, except finger touches [PalmGuard] attributes to the writing hand.
  * Doing this at the View level keeps the routing in one place instead of every composable having to
  * tell pens, fingers and palms apart.
@@ -53,8 +66,10 @@ class InkHostLayout(
 
     private val wetInk = InProgressStrokesView(context)
     private val predictor = MotionEventPredictor.newInstance(this)
-    private val targets = mutableMapOf<InProgressStrokeId, InkTarget>()
+    private val targets = mutableMapOf<InProgressStrokeId, InkTarget.Draw>()
     private var activeStroke: InProgressStrokeId? = null
+    private var activeEraser: InkTarget.Erase? = null
+    private val point = FloatArray(2)
     private val palmGuard = PalmGuard()
     private var fingerGestureActive = false
 
@@ -109,11 +124,30 @@ class InkHostLayout(
         if (event.actionMasked == MotionEvent.ACTION_DOWN) {
             val target = targetResolver?.inkTargetAt(event.x, event.y) ?: return false
             requestUnbufferedDispatch(event)
-            predictor.record(event)
-            val id = wetInk.startStroke(event, event.getPointerId(0), target.brush, target.hostToTarget)
-            targets[id] = target
-            activeStroke = id
-            target.onStrokeStarted()
+            when (target) {
+                is InkTarget.Draw -> {
+                    predictor.record(event)
+                    val id = wetInk.startStroke(event, event.getPointerId(0), target.brush, target.hostToTarget)
+                    targets[id] = target
+                    activeStroke = id
+                    target.onStarted()
+                }
+
+                is InkTarget.Erase -> {
+                    activeEraser = target
+                    target.onStarted()
+                    erase(target, event)
+                }
+            }
+            return true
+        }
+
+        activeEraser?.let { eraser ->
+            if (event.actionMasked == MotionEvent.ACTION_MOVE) erase(eraser, event)
+            if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                eraser.onFinished()
+                activeEraser = null
+            }
             return true
         }
 
@@ -145,6 +179,18 @@ class InkHostLayout(
             }
         }
         return true
+    }
+
+    /** Passes on where the stylus went since the last event, including the points batched in between. */
+    private fun erase(eraser: InkTarget.Erase, event: MotionEvent) {
+        for (i in 0..event.historySize) {
+            point[0] = if (i < event.historySize) event.getHistoricalX(i) else event.x
+            point[1] = if (i < event.historySize) event.getHistoricalY(i) else event.y
+            eraser.hostToTarget.mapPoints(point)
+            eraser.onMove(point[0], point[1])
+        }
+        // Like finished strokes, erased ones should go in the next frame, not the one after.
+        Snapshot.sendApplyNotifications()
     }
 
     private fun cancelStroke(id: InProgressStrokeId, event: MotionEvent) {

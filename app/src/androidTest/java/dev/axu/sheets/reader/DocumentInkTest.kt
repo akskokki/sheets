@@ -53,6 +53,20 @@ class DocumentInkTest {
     }
 
     @Test
+    fun oneSweepOfTheEraserIsUndoneAtOnce() {
+        val ink = DocumentInk(Annotations(mapOf(0 to listOf(a, b, c)), listOf(a, b, c)))
+        val eraser = ink.startErasing(0)
+        eraser.erase(listOf(c))
+        eraser.erase(listOf(a))
+        assertEquals(listOf(b), ink.strokesOn(0))
+
+        assertEquals(0, ink.undo())
+        assertEquals(listOf(a, b, c), ink.strokesOn(0))
+        assertEquals(0, ink.redo())
+        assertEquals(listOf(b), ink.strokesOn(0))
+    }
+
+    @Test
     fun redoIsClearedByNewEdits() {
         val ink = DocumentInk(Annotations.Empty)
         ink.add(0, a)

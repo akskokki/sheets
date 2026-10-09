@@ -10,6 +10,13 @@ import androidx.ink.strokes.Stroke
 import dev.axu.sheets.ink.InkTarget
 import dev.axu.sheets.ink.InkTargetResolver
 
+/** One movement of the eraser over a page, in page coordinates (points). */
+interface PageEraser {
+    fun moveTo(x: Float, y: Float)
+
+    fun finish()
+}
+
 /**
  * Tracks where pages are on screen so stylus input can be mapped onto the page under it.
  *
@@ -19,8 +26,11 @@ class PageInkTargets(
     /** The part of each page shown, in points. */
     private val crops: List<RectF>,
     private val brush: () -> Brush,
+    /** Whether the pen erases rather than draws. */
+    private val erasing: () -> Boolean,
     private val onStrokeStarted: () -> Unit,
     private val onStrokeFinished: (page: Int, stroke: Stroke) -> Unit,
+    private val startErasing: (page: Int) -> PageEraser?,
 ) : InkTargetResolver {
     // Coordinates rather than rectangles: zooming changes where a page is drawn without laying it
     // out again, so positions are only accurate when read at the moment the pen comes down.
@@ -57,7 +67,19 @@ class PageInkTargets(
                 postScale(pointsPerPx, pointsPerPx)
                 postTranslate(crop.left, crop.top)
             }
-            return InkTarget(brush(), hostToPage, onStrokeStarted) { stroke -> onStrokeFinished(page, stroke) }
+            if (erasing()) {
+                var eraser: PageEraser? = null
+                return InkTarget.Erase(
+                    hostToPage,
+                    onStarted = {
+                        onStrokeStarted()
+                        eraser = startErasing(page)
+                    },
+                    onMove = { x, y -> eraser?.moveTo(x, y) },
+                    onFinished = { eraser?.finish() },
+                )
+            }
+            return InkTarget.Draw(brush(), hostToPage, onStrokeStarted) { stroke -> onStrokeFinished(page, stroke) }
         }
         return null
     }
