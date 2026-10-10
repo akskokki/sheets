@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -25,9 +27,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.axu.sheets.R
-import dev.axu.sheets.ui.ButtonGroup
-import dev.axu.sheets.ui.ButtonPosition
-import dev.axu.sheets.ui.IconButton
 
 /** Width of the vertical toolbar, used when the page leaves enough room beside it. */
 val ToolbarRailWidth: Dp = 72.dp
@@ -87,27 +86,27 @@ private val ToolbarColor = Color.White.copy(alpha = 0.94f)
 
 @Composable
 private fun BackButton(actions: ToolbarActions) {
-    ButtonGroup {
-        IconButton(painterResource(R.drawable.ic_back), "Back", actions.onBack)
+    IconButton(onClick = actions.onBack) {
+        Icon(painterResource(R.drawable.ic_back), contentDescription = "Back")
     }
 }
 
 @Composable
 private fun EditButtons(state: ToolbarState, actions: ToolbarActions, vertical: Boolean) {
-    ButtonGroup(vertical = vertical) {
-        IconButton(
+    ToolbarButtonGroup(vertical = vertical) {
+        ToolbarIconButton(
             painterResource(R.drawable.ic_undo),
             "Undo",
+            ButtonPosition.First,
             actions.onUndo,
             enabled = state.canUndo,
-            position = ButtonPosition.First,
         )
-        IconButton(
+        ToolbarIconButton(
             painterResource(R.drawable.ic_redo),
             "Redo",
+            ButtonPosition.Last,
             actions.onRedo,
             enabled = state.canRedo,
-            position = ButtonPosition.Last,
         )
     }
 }

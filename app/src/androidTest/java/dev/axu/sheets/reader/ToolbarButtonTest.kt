@@ -1,4 +1,4 @@
-package dev.axu.sheets.ui
+package dev.axu.sheets.reader
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -17,7 +17,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
-class ButtonTest {
+class ToolbarButtonTest {
     @get:Rule
     val rule = createComposeRule()
 
@@ -27,7 +27,7 @@ class ButtonTest {
     fun setUp() {
         rule.setContent {
             Box(Modifier.size(400.dp)) {
-                Button(onClick = { clicks++ }, Modifier.size(44.dp).testTag("button")) {}
+                ToolbarButton(onClick = { clicks++ }, Modifier.size(44.dp).testTag("button")) {}
             }
         }
     }

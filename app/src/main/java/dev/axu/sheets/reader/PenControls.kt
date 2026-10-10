@@ -32,11 +32,6 @@ import androidx.compose.ui.unit.dp
 import dev.axu.sheets.R
 import dev.axu.sheets.ink.PenSettings
 import dev.axu.sheets.ink.PenWidth
-import dev.axu.sheets.ui.Button
-import dev.axu.sheets.ui.ButtonDivider
-import dev.axu.sheets.ui.ButtonGroup
-import dev.axu.sheets.ui.ButtonHeight
-import dev.axu.sheets.ui.EaseOut
 
 /**
  * The toolbar's drawing tools: the pen, optionally the ones used before it to switch back to, and
@@ -51,7 +46,7 @@ fun DrawingTools(
     onErasingChange: (Boolean) -> Unit,
     vertical: Boolean,
 ) {
-    ButtonGroup(vertical = vertical, spacing = ToolSpacing) {
+    ToolbarButtonGroup(vertical = vertical, spacing = ToolSpacing) {
         PenButton(pen, menu, selected = !erasing, onSelect = { onErasingChange(false) }, vertical)
         if (showRecents) {
             val motion = rememberRecentPensMotion(pen.recents, pen.pen)
@@ -63,7 +58,7 @@ fun DrawingTools(
                 }
             }
         }
-        ButtonDivider()
+        ToolbarDivider()
         EraserButton(
             selected = erasing,
             onChange = {
@@ -102,7 +97,7 @@ private fun PenButton(
                 .rotate(turn + if (vertical) -90f else 0f),
         )
     }
-    Button(
+    ToolbarButton(
         rest = if (selected) ButtonHeight.Raised else ButtonHeight.Flush,
         presses,
         (if (vertical) Modifier.size(44.dp, 56.dp) else Modifier.height(44.dp))
@@ -129,7 +124,7 @@ private fun EraserButton(selected: Boolean, onChange: (Boolean) -> Unit) {
     val isSelected by rememberUpdatedState(selected)
     val change by rememberUpdatedState(onChange)
     val presses = remember { MutableInteractionSource() }
-    Button(
+    ToolbarButton(
         rest = if (selected) ButtonHeight.Raised else ButtonHeight.Flush,
         presses,
         Modifier

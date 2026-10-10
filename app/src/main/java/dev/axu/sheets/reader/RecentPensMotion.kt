@@ -21,8 +21,6 @@ import androidx.compose.ui.unit.dp
 import dev.axu.sheets.ink.Pen
 import dev.axu.sheets.reader.RecentPenMoves.Arriving
 import dev.axu.sheets.reader.RecentPenMoves.Leaving
-import dev.axu.sheets.ui.Button
-import dev.axu.sheets.ui.ButtonHeight
 
 /** A pen used before, to switch back to in one tap, getting there as [move] says. */
 @Composable
@@ -34,7 +32,7 @@ fun RecentPenButton(
     onClick: () -> Unit,
 ) {
     // Never raised, as it's never the pen in use: it only sinks while pressed.
-    Button(
+    ToolbarButton(
         onClick,
         Modifier
             .then(if (vertical) Modifier.size(44.dp, RecentPenLength) else Modifier.size(RecentPenLength, 44.dp))

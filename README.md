@@ -62,7 +62,9 @@ The two builds are separate apps with separate data. Sheets Dev keeps its folder
   button changes at once, while recent pens that change place fade over toward their new places,
   or slide one place on (`RecentPenMoves`). Touching the eraser or the pen selects it at once
   (`toolPress`); pressing the selected one again turns the eraser off or opens the menu.
-- **Buttons** (`ui/Button.kt`): a face that sits raised, flush or pressed in a grey well
-  (`ButtonGroup`), showing its side or the wall of its hole by 1 dp. Buttons rest raised and lie
-  flush with a faded icon when unavailable; the selected tool is raised and the others flush, as
-  are recent pens. A press sinks the face, the action comes on release, and sliding off cancels.
+- **Toolbar buttons** (`ToolbarButtons.kt`), for the drawing tools and undo and redo: a face that
+  sits raised, flush or pressed in a grey well (`ToolbarButtonGroup`), showing 1 dp of its side
+  when raised or 2 dp of the wall of its hole when pressed. Buttons rest raised and lie flush with a
+  faded icon when unavailable; the selected tool is raised and the others flush, as are recent
+  pens. Every press sinks all the way, even a tap that selects a tool; the action comes on
+  release, and sliding off cancels.

@@ -1,4 +1,4 @@
-package dev.axu.sheets.ui
+package dev.axu.sheets.reader
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.CubicBezierEasing
@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.translate
@@ -53,12 +54,12 @@ import kotlin.math.abs
  */
 enum class ButtonHeight(internal val lift: Float) { Raised(1f), Flush(0f), Pressed(-2f) }
 
-/** Where a button sits in a [ButtonGroup], which decides its shape and the room around its icon. */
-enum class ButtonPosition { Alone, First, Middle, Last }
+/** Where a button sits in a [ToolbarButtonGroup], which decides its shape and the room around its icon. */
+enum class ButtonPosition { First, Middle, Last }
 
 /** Does [onClick] when released, unless the press slides off first. */
 @Composable
-fun Button(
+fun ToolbarButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
@@ -67,7 +68,7 @@ fun Button(
     content: @Composable () -> Unit,
 ) {
     val presses = remember { MutableInteractionSource() }
-    Button(
+    ToolbarButton(
         rest,
         presses,
         modifier.clickable(presses, indication = null, enabled = enabled, role = Role.Button, onClick = onClick),
@@ -78,13 +79,13 @@ fun Button(
 }
 
 /**
- * Every button in the app. Its face rests at [rest] and sinks while [presses] says it's pressed,
+ * Every button in the toolbar's groups. Its face rests at [rest] and sinks while [presses] says it's pressed,
  * all the way even for a brief tap;
  * what pressing it does is up to a gesture in [modifier], which reports to [presses]. Unless
  * [enabled], it lies flush with its icon faded.
  */
 @Composable
-fun Button(
+fun ToolbarButton(
     rest: ButtonHeight,
     presses: InteractionSource,
     modifier: Modifier = Modifier,
@@ -126,7 +127,7 @@ fun Button(
             onDrawBehind {
                 // The edge fills the button's footprint, and what the face uncovers of it is the
                 // button's side or wall. Flush, it's hidden, so antialiasing leaves no fringe.
-                drawOutline(outline, SheetsColors.Edge, alpha = abs(lift).coerceAtMost(1f))
+                drawOutline(outline, EdgeColor, alpha = abs(lift).coerceAtMost(1f))
                 translate(top = -lift * Travel.toPx()) { drawOutline(outline, face) }
             }
         },
@@ -139,23 +140,23 @@ fun Button(
             },
             contentAlignment = Alignment.Center,
         ) {
-            CompositionLocalProvider(LocalContentColor provides SheetsColors.Ink, content = content)
+            CompositionLocalProvider(LocalContentColor provides InkColor, content = content)
         }
     }
 }
 
 /**
- * A button showing [icon], described by [label]. On its own it's round; in a [ButtonGroup], its
- * [position] rounds the group's ends and leaves the icon a little more room beside them.
+ * A button showing [icon], described by [label]. Its [position] in a [ToolbarButtonGroup] rounds the
+ * group's ends and leaves the icon a little more room beside them.
  */
 @Composable
-fun IconButton(
+fun ToolbarIconButton(
     icon: Painter,
     label: String,
+    position: ButtonPosition,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    position: ButtonPosition = ButtonPosition.Alone,
 ) {
     val vertical = LocalGroupVertical.current
     // A rounded end looks lighter than the flat middle of a group, so it gets more room.
@@ -163,12 +164,8 @@ fun IconButton(
     val after = if (position == ButtonPosition.Last) EndRoom else InnerRoom
     val length = before + IconSize + after
     val nudge = (before - after) / 2
-    val size = when {
-        position == ButtonPosition.Alone -> Modifier.size(ButtonSize)
-        vertical -> Modifier.size(ButtonSize, length)
-        else -> Modifier.size(length, ButtonSize)
-    }
-    Button(onClick, modifier.then(size), enabled, shape = position.shape(vertical)) {
+    val size = if (vertical) Modifier.size(ButtonSize, length) else Modifier.size(length, ButtonSize)
+    ToolbarButton(onClick, modifier.then(size), enabled, shape = position.shape(vertical)) {
         Icon(
             icon,
             contentDescription = label,
@@ -184,7 +181,7 @@ fun IconButton(
  * act together, like undo and redo, sit closest.
  */
 @Composable
-fun ButtonGroup(
+fun ToolbarButtonGroup(
     modifier: Modifier = Modifier,
     vertical: Boolean = false,
     spacing: Dp = 2.dp,
@@ -192,7 +189,7 @@ fun ButtonGroup(
 ) {
     val well = modifier
         .clip(CircleShape)
-        .background(SheetsColors.Group)
+        .background(GroupColor)
         .padding(4.dp)
     CompositionLocalProvider(LocalGroupVertical provides vertical) {
         if (vertical) {
@@ -203,25 +200,23 @@ fun ButtonGroup(
     }
 }
 
-/** A line between buttons in a [ButtonGroup], across it. */
+/** A line between buttons in a [ToolbarButtonGroup], across it. */
 @Composable
-fun ButtonDivider() {
+fun ToolbarDivider() {
     val size = if (LocalGroupVertical.current) Modifier.size(24.dp, 1.dp) else Modifier.size(1.dp, 24.dp)
-    Box(size.background(SheetsColors.Divider))
+    Box(size.background(DividerColor))
 }
 
 private val LocalGroupVertical = staticCompositionLocalOf { false }
 
 private val ButtonHeight.face
     get() = when (this) {
-        ButtonHeight.Raised -> SheetsColors.Raised
-        ButtonHeight.Flush -> SheetsColors.Group
-        ButtonHeight.Pressed -> SheetsColors.Pressed
+        ButtonHeight.Raised -> RaisedColor
+        ButtonHeight.Flush -> GroupColor
+        ButtonHeight.Pressed -> PressedColor
     }
 
 private fun ButtonPosition.shape(vertical: Boolean): Shape = when (this) {
-    ButtonPosition.Alone -> CircleShape
-
     ButtonPosition.Middle -> RoundedCornerShape(0)
 
     ButtonPosition.First -> if (vertical) {
@@ -243,7 +238,7 @@ private fun ButtonPosition.shape(vertical: Boolean): Shape = when (this) {
  */
 private val Travel = 1.dp
 
-/** Across a button, and along a round one. */
+/** Across a button. */
 private val ButtonSize = 44.dp
 private val IconSize = 22.dp
 private val EndRoom = 15.dp
@@ -251,6 +246,23 @@ private val InnerRoom = 13.dp
 private const val DISABLED_ALPHA = 0.38f
 private const val PRESS_MILLIS = 120
 private const val SETTLE_MILLIS = 440
+
+/*
+ * The colors lie on one curve in OKLCH by depth: the deeper a surface sits, the darker and slightly
+ * bluer it is.
+ */
+private val RaisedColor = Color(0xFFFFFFFF)
+private val PressedColor = Color(0xFFF3F6F9)
+
+/** Groups, and the faces of buttons flush with them. */
+private val GroupColor = Color(0xFFEDF0F5)
+private val DividerColor = Color(0xFFD0D4DC)
+
+/** A button's side below a raised face, or the wall above a pressed one. */
+private val EdgeColor = Color(0xFFBFC4CD)
+
+/** Icons on buttons. */
+private val InkColor = Color(0xFF1F1F1F)
 
 /** CSS's ease-out, for buttons and what they move. Nothing overshoots, as that would lift a face off its edge. */
 val EaseOut = CubicBezierEasing(0f, 0f, 0.58f, 1f)

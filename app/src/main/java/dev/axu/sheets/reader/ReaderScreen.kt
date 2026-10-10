@@ -41,7 +41,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
@@ -61,8 +60,6 @@ import dev.axu.sheets.R
 import dev.axu.sheets.appContainer
 import dev.axu.sheets.ink.LocalInkHost
 import dev.axu.sheets.pdf.size
-import dev.axu.sheets.ui.ButtonGroup
-import dev.axu.sheets.ui.IconButton
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -280,8 +277,18 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
 /** Shows the eraser is on while the toolbar is hidden; tapping it switches back to the pen. */
 @Composable
 private fun EraserReminder(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    ButtonGroup(modifier.shadow(3.dp, CircleShape)) {
-        IconButton(painterResource(R.drawable.ic_eraser), "Erasing. Switch back to the pen", onClick)
+    Surface(
+        onClick = onClick,
+        modifier = modifier
+            .size(48.dp)
+            .semantics { contentDescription = "Erasing. Switch back to the pen" },
+        shape = CircleShape,
+        color = Color.White,
+        shadowElevation = 3.dp,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(painterResource(R.drawable.ic_eraser), contentDescription = null, Modifier.size(22.dp))
+        }
     }
 }
 
