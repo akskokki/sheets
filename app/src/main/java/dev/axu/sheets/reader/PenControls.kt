@@ -25,7 +25,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
@@ -89,15 +88,9 @@ private fun PenButton(
     onSelect: () -> Unit,
     vertical: Boolean,
 ) {
-    // The arrow points to where the menu opens, and back once it's open. It shows only while
-    // pressing opens the menu: while erasing, pressing picks the pen up instead.
+    // The arrow points to where the menu opens, and back once it's open.
     val open = menu.isOpen
     val turn by animateFloatAsState(if (open) 180f else 0f, tween(ARROW_MILLIS, easing = EaseOut), label = "arrow")
-    val arrow by animateFloatAsState(
-        if (selected) 1f else 0f,
-        tween(ARROW_FADE_MILLIS, easing = EaseOut),
-        label = "arrow",
-    )
     val isSelected by rememberUpdatedState(selected)
     val select by rememberUpdatedState(onSelect)
     val presses = remember { MutableInteractionSource() }
@@ -117,8 +110,7 @@ private fun PenButton(
             contentDescription = null,
             modifier = Modifier
                 .size(18.dp)
-                .rotate(turn + if (vertical) -90f else 0f)
-                .graphicsLayer { alpha = arrow },
+                .rotate(turn + if (vertical) -90f else 0f),
         )
     }
     Button(
@@ -187,5 +179,4 @@ private const val LINE_WIDTH_PER_POINT = 2f
 private val LineStart = 12.dp
 private val LineWidth = 40.dp
 private const val ARROW_MILLIS = 400
-private const val ARROW_FADE_MILLIS = 320
 private const val CROSSFADE_MILLIS = 240

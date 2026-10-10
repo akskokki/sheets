@@ -63,7 +63,7 @@ The two builds are separate apps with separate data. Sheets Dev keeps its folder
   recent pens that change place fade over toward their new places, or slide one place on
   (`RecentPenMoves`), pushing the last one out ahead of them in one sweep. Touching the eraser or
   the pen selects it at once (`toolPress`); pressing the selected one again turns the eraser off or
-  opens the menu, whose arrow shows only while the pen is selected.
+  opens the menu.
 - **Buttons** (`ui/Buttons.kt`), everywhere in the app: a mark (an icon, a pen's line, a word in
   the accent color) with nothing around it. A short bar under a button marks it selected, in the
   pen's ink for the pen or black for the eraser. While pressed, a soft fill shows behind it, in
