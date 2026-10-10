@@ -1,8 +1,10 @@
 package dev.axu.sheets.reader
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,16 +24,23 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import dev.axu.sheets.R
 import dev.axu.sheets.ink.PenSettings
 import dev.axu.sheets.ink.PenWidth
+import dev.axu.sheets.ui.Button
+import dev.axu.sheets.ui.ButtonDivider
+import dev.axu.sheets.ui.ButtonGroup
+import dev.axu.sheets.ui.ButtonHeight
+import dev.axu.sheets.ui.EaseOut
 
 /**
  * The toolbar's drawing tools: the pen, optionally the ones used before it to switch back to, and
- * the eraser, in a row or (for the side rail) a column.
+ * the eraser, in a row or (for the side rail) a column. The selected tool is raised.
  */
 @Composable
 fun DrawingTools(
@@ -41,7 +51,7 @@ fun DrawingTools(
     onErasingChange: (Boolean) -> Unit,
     vertical: Boolean,
 ) {
-    ToolGroup(vertical) {
+    ButtonGroup(vertical = vertical, spacing = ToolSpacing) {
         PenButton(pen, menu, selected = !erasing, onSelect = { onErasingChange(false) }, vertical)
         if (showRecents) {
             val motion = rememberRecentPensMotion(pen.recents, pen.pen)
@@ -53,21 +63,20 @@ fun DrawingTools(
                 }
             }
         }
-        Box(
-            Modifier.background(
-                SeparatorColor,
-            ).then(if (vertical) Modifier.size(24.dp, 1.dp) else Modifier.size(1.dp, 24.dp)),
+        ButtonDivider()
+        EraserButton(
+            selected = erasing,
+            onChange = {
+                menu.close()
+                onErasingChange(it)
+            },
         )
-        EraserButton(selected = erasing) {
-            menu.close()
-            onErasingChange(!erasing)
-        }
     }
 }
 
 /**
- * The pen in use, drawn as a short line; tapping it opens [menu] to change its color and width. While
- * another tool is [selected], tapping it only switches back to the pen.
+ * The pen in use, drawn as a short line; pressing it opens [menu] to change its color and width.
+ * While another tool is [selected], touching it only switches back to the pen.
  */
 @Composable
 private fun PenButton(
@@ -79,9 +88,10 @@ private fun PenButton(
 ) {
     // The arrow points to where the menu opens, and back once it's open.
     val open = menu.isOpen
-    val turn by animateFloatAsState(if (open) 180f else 0f, label = "arrow")
+    val turn by animateFloatAsState(if (open) 180f else 0f, tween(ARROW_MILLIS, easing = EaseOut), label = "arrow")
     val isSelected by rememberUpdatedState(selected)
     val select by rememberUpdatedState(onSelect)
+    val presses = remember { MutableInteractionSource() }
     val content: @Composable () -> Unit = {
         PenLine(Color(pen.color.argb), pen.width, Modifier.size(40.dp, 24.dp))
         Icon(
@@ -92,12 +102,16 @@ private fun PenButton(
                 .rotate(turn + if (vertical) -90f else 0f),
         )
     }
-    ToolButton(
-        selected,
-        description = "Pen: ${pen.color.name}, ${pen.width.name}",
-        gesture = Modifier.opensPenMenu(menu, isSelected = { isSelected }, onSelect = { select() }),
-        modifier = (if (vertical) Modifier.size(48.dp, 56.dp) else Modifier.height(44.dp))
-            .semantics { stateDescription = if (open) "Menu open" else "Menu closed" },
+    Button(
+        rest = if (selected) ButtonHeight.Raised else ButtonHeight.Flush,
+        presses,
+        (if (vertical) Modifier.size(44.dp, 56.dp) else Modifier.height(44.dp))
+            .opensPenMenu(menu, presses, isSelected = { isSelected }, onSelect = { select() })
+            .semantics {
+                contentDescription = "Pen: ${pen.color.name}, ${pen.width.name}"
+                this.selected = selected
+                stateDescription = if (open) "Menu open" else "Menu closed"
+            },
     ) {
         if (vertical) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) { content() }
@@ -109,14 +123,22 @@ private fun PenButton(
     }
 }
 
-/** Erases whole strokes the pen touches, until switched off. */
+/** Erases whole strokes the pen touches, until switched off by pressing it again. */
 @Composable
-private fun EraserButton(selected: Boolean, onClick: () -> Unit) {
-    ToolButton(
-        selected,
-        description = "Eraser",
-        gesture = Modifier.toolClick(onClick),
-        modifier = Modifier.size(44.dp),
+private fun EraserButton(selected: Boolean, onChange: (Boolean) -> Unit) {
+    val isSelected by rememberUpdatedState(selected)
+    val change by rememberUpdatedState(onChange)
+    val presses = remember { MutableInteractionSource() }
+    Button(
+        rest = if (selected) ButtonHeight.Raised else ButtonHeight.Flush,
+        presses,
+        Modifier
+            .size(44.dp)
+            .toolPress(presses, isSelected = { isSelected }, onSelect = { change(true) }, onClick = { change(false) })
+            .semantics {
+                contentDescription = "Eraser"
+                this.selected = selected
+            },
     ) {
         Icon(painterResource(R.drawable.ic_eraser), contentDescription = null, Modifier.size(22.dp))
     }
@@ -140,5 +162,4 @@ fun PenLine(color: Color, width: PenWidth, modifier: Modifier = Modifier) {
 
 /** Lines are drawn in proportion to the pen's width. */
 private const val LINE_WIDTH_PER_POINT = 2f
-
-private val SeparatorColor = Color(0xFFD5D8DD)
+private const val ARROW_MILLIS = 400

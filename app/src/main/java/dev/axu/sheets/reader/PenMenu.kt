@@ -12,6 +12,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -117,40 +119,51 @@ class PenMenuState(private val onOpen: () -> Unit = {}, private val onClose: () 
 /**
  * Makes this the pen button: pressing it opens the menu, and pressing it again closes it. Pressing
  * and dragging into the menu picks the choice lifted over, leaving the menu open for more. While the
- * pen isn't [isSelected], a tap only calls [onSelect]. The gesture keeps the first [isSelected] and
- * [onSelect] it's given, so they must read the current state.
+ * pen isn't [isSelected], touching it only calls [onSelect], at once. Presses that open or close the
+ * menu are reported to [presses], until a drag leaves the button for the menu. The gesture keeps the
+ * first [isSelected] and [onSelect] it's given, so they must read the current state.
  */
 fun Modifier.opensPenMenu(
     menu: PenMenuState,
+    presses: MutableInteractionSource,
     isSelected: () -> Boolean = { true },
     onSelect: () -> Unit = {},
 ): Modifier = this
     .onGloballyPositioned { menu.anchor = it.boundsInRoot() }
-    .pointerInput(menu) {
+    .pointerInput(menu, presses) {
         awaitEachGesture {
             val down = awaitFirstDown()
-            val selected = isSelected()
+            if (!isSelected()) {
+                onSelect()
+                return@awaitEachGesture
+            }
             val wasOpen = menu.isOpen
-            if (selected) menu.open()
+            menu.open()
+            var press: PressInteraction.Press? = PressInteraction.Press(down.position).also { presses.tryEmit(it) }
             var dragging = false
             try {
                 while (true) {
                     val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
-                    if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop) dragging = true
+                    if (!dragging && (change.position - down.position).getDistance() > viewConfiguration.touchSlop) {
+                        dragging = true
+                        press?.let { presses.tryEmit(PressInteraction.Cancel(it)) }
+                        press = null
+                    }
                     val point = menu.anchor.topLeft + change.position
                     if (change.pressed) {
                         change.consume()
-                        if (selected) menu.onDrag(point.takeIf { dragging })
+                        menu.onDrag(point.takeIf { dragging })
                         continue
                     }
-                    when {
-                        !selected -> if (!dragging) onSelect()
-                        dragging -> menu.onLift(point)
-                        wasOpen -> menu.close()
+                    if (dragging) {
+                        menu.onLift(point)
+                    } else if (wasOpen) {
+                        menu.close()
                     }
                     break
                 }
             } finally {
+                press?.let { presses.tryEmit(PressInteraction.Release(it)) }
                 menu.onDrag(null)
             }
         }

@@ -15,11 +15,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.axu.sheets.ink.Pen
 import dev.axu.sheets.reader.RecentPenMoves.Arriving
 import dev.axu.sheets.reader.RecentPenMoves.Leaving
+import dev.axu.sheets.ui.Button
+import dev.axu.sheets.ui.ButtonHeight
 
 /** A pen used before, to switch back to in one tap, getting there as [move] says. */
 @Composable
@@ -30,11 +33,13 @@ fun RecentPenButton(
     vertical: Boolean,
     onClick: () -> Unit,
 ) {
-    ToolButton(
-        selected = false,
-        description = "Switch to ${pen.color.name}, ${pen.width.name}",
-        gesture = Modifier.toolClick(onClick),
-        modifier = Modifier.size(RecentPenSize),
+    // Never raised, as it's never the pen in use: it only sinks while pressed.
+    Button(
+        onClick,
+        Modifier
+            .then(if (vertical) Modifier.size(44.dp, RecentPenLength) else Modifier.size(RecentPenLength, 44.dp))
+            .semantics { contentDescription = "Switch to ${pen.color.name}, ${pen.width.name}" },
+        rest = ButtonHeight.Flush,
     ) {
         val line = Modifier.size(32.dp, 20.dp)
         val old = move?.old
@@ -98,7 +103,7 @@ private fun GraphicsLayerScope.fadeIn(elapsed: Float, vertical: Boolean) {
 /** Speeds up to halfway while the others fade out, and settles as they fade in. */
 private fun GraphicsLayerScope.slideIn(elapsed: Float, vertical: Boolean) {
     // From the place before, side by side in the ToolGroup.
-    val half = ((if (vertical) RecentPenSize.height else RecentPenSize.width) + ToolSpacing).toPx() / 2
+    val half = (RecentPenLength + ToolSpacing).toPx() / 2
     val toGo = if (elapsed < FADE_OUT_MILLIS) {
         half * (2f - FastOutLinearInEasing.transform(elapsed / FADE_OUT_MILLIS))
     } else {
@@ -115,4 +120,6 @@ private const val FADE_OUT_MILLIS = 320
 private const val FADE_IN_MILLIS = 400
 private const val SHUFFLE_MILLIS = FADE_OUT_MILLIS + FADE_IN_MILLIS
 private val ShuffleNudge = 14.dp
-private val RecentPenSize = DpSize(48.dp, 44.dp)
+
+/** Along the group of tools; across it, a recent pen is as wide as every button. */
+private val RecentPenLength = 52.dp

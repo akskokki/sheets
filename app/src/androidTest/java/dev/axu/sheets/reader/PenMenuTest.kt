@@ -1,5 +1,6 @@
 package dev.axu.sheets.reader
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,6 +34,8 @@ class PenMenuTest {
     val rule = createComposeRule()
 
     private val menu = PenMenuState()
+    private var penSelected = true
+    private val presses = MutableInteractionSource()
     private val taps = mutableListOf<String>()
     private val picked = mutableListOf<String>()
     private val choices = listOf("a", "b", "c")
@@ -48,7 +51,17 @@ class PenMenuTest {
                         .pointerInput(Unit) { detectTaps(onTap = { taps += "tap" }, onMultiFingerTap = {}) },
                 )
                 if (menu.isOpen) ClosePenMenuOnTouch(menu)
-                Box(Modifier.size(ButtonSize).testTag("button").opensPenMenu(menu))
+                Box(
+                    Modifier
+                        .size(ButtonSize)
+                        .testTag("button")
+                        .opensPenMenu(
+                            menu,
+                            presses,
+                            isSelected = { penSelected },
+                            onSelect = { penSelected = true },
+                        ),
+                )
                 if (menu.isOpen) {
                     Column(Modifier.offset(y = ChoicesTop)) {
                         for (choice in choices) {
@@ -78,6 +91,18 @@ class PenMenuTest {
         rule.onNodeWithTag("button").performTouchInput { click() }
         rule.runOnIdle { assertTrue(menu.isOpen) }
         rule.onNodeWithTag("button").performTouchInput { click() }
+        rule.runOnIdle { assertFalse(menu.isOpen) }
+    }
+
+    @Test
+    fun touchingThePenWhileAnotherToolIsSelectedSelectsItAtOnceWithoutOpeningTheMenu() {
+        penSelected = false
+        rule.onNodeWithTag("button").performTouchInput { down(center) }
+        rule.runOnIdle {
+            assertTrue(penSelected)
+            assertFalse(menu.isOpen)
+        }
+        rule.onNodeWithTag("button").performTouchInput { up() }
         rule.runOnIdle { assertFalse(menu.isOpen) }
     }
 

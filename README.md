@@ -60,5 +60,9 @@ The two builds are separate apps with separate data. Sheets Dev keeps its folder
   The last pens used sit beside it (`RecentPens`, optional in settings), to switch back in one
   tap; only the pen finally chosen in the menu counts, not every color tried on the way. The pen
   button changes at once, while recent pens that change place fade over toward their new places,
-  or slide one place on (`RecentPenMoves`). The selected tool's chip slides between the pen and
-  the eraser (`ToolGroup`).
+  or slide one place on (`RecentPenMoves`). Touching the eraser or the pen selects it at once
+  (`toolPress`); pressing the selected one again turns the eraser off or opens the menu.
+- **Buttons** (`ui/Button.kt`): a face that sits raised, flush or pressed in a grey well
+  (`ButtonGroup`), showing its side or the wall of its hole by 1 dp. Buttons rest raised and lie
+  flush with a faded icon when unavailable; the selected tool is raised and the others flush, as
+  are recent pens. A press sinks the face, the action comes on release, and sliding off cancels.

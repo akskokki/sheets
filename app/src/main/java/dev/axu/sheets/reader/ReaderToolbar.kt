@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -27,6 +25,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.axu.sheets.R
+import dev.axu.sheets.ui.ButtonGroup
+import dev.axu.sheets.ui.ButtonPosition
+import dev.axu.sheets.ui.IconButton
 
 /** Width of the vertical toolbar, used when the page leaves enough room beside it. */
 val ToolbarRailWidth: Dp = 72.dp
@@ -55,8 +56,8 @@ fun ReaderTopBar(
             )
             tools()
             Spacer(Modifier.width(12.dp))
-            EditButtons(state, actions)
-            PageNumber(state, Modifier.padding(start = 8.dp, end = 16.dp))
+            EditButtons(state, actions, vertical = false)
+            PageNumber(state, Modifier.padding(start = 12.dp, end = 16.dp))
         }
     }
 }
@@ -73,7 +74,7 @@ fun ReaderSideRail(
         Column(Modifier.padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             BackButton(actions)
             Spacer(Modifier.height(24.dp))
-            EditButtons(state, actions)
+            EditButtons(state, actions, vertical = true)
             Spacer(Modifier.height(24.dp))
             tools()
             Spacer(Modifier.weight(1f))
@@ -86,18 +87,28 @@ private val ToolbarColor = Color.White.copy(alpha = 0.94f)
 
 @Composable
 private fun BackButton(actions: ToolbarActions) {
-    IconButton(onClick = actions.onBack) {
-        Icon(painterResource(R.drawable.ic_back), contentDescription = "Back")
+    ButtonGroup {
+        IconButton(painterResource(R.drawable.ic_back), "Back", actions.onBack)
     }
 }
 
 @Composable
-private fun EditButtons(state: ToolbarState, actions: ToolbarActions) {
-    IconButton(onClick = actions.onUndo, enabled = state.canUndo) {
-        Icon(painterResource(R.drawable.ic_undo), contentDescription = "Undo")
-    }
-    IconButton(onClick = actions.onRedo, enabled = state.canRedo) {
-        Icon(painterResource(R.drawable.ic_redo), contentDescription = "Redo")
+private fun EditButtons(state: ToolbarState, actions: ToolbarActions, vertical: Boolean) {
+    ButtonGroup(vertical = vertical) {
+        IconButton(
+            painterResource(R.drawable.ic_undo),
+            "Undo",
+            actions.onUndo,
+            enabled = state.canUndo,
+            position = ButtonPosition.First,
+        )
+        IconButton(
+            painterResource(R.drawable.ic_redo),
+            "Redo",
+            actions.onRedo,
+            enabled = state.canRedo,
+            position = ButtonPosition.Last,
+        )
     }
 }
 
