@@ -46,8 +46,9 @@ fun DrawingTools(
     onErasingChange: (Boolean) -> Unit,
     vertical: Boolean,
 ) {
+    val penPresses = remember { MutableInteractionSource() }
     ToolbarButtonGroup(vertical = vertical, spacing = ToolSpacing) {
-        PenButton(pen, menu, selected = !erasing, onSelect = { onErasingChange(false) }, vertical)
+        PenButton(pen, menu, penPresses, selected = !erasing, onSelect = { onErasingChange(false) }, vertical)
         if (showRecents) {
             val motion = rememberRecentPensMotion(pen.recents, pen.pen)
             pen.recents.forEachIndexed { i, recent ->
@@ -55,6 +56,8 @@ fun DrawingTools(
                     menu.close()
                     pen.switchTo(recent)
                     onErasingChange(false)
+                    // The pen button dips as it takes the pen.
+                    penPresses.tryEmit(ButtonDip)
                 }
             }
         }
@@ -77,6 +80,7 @@ fun DrawingTools(
 private fun PenButton(
     pen: PenSettings,
     menu: PenMenuState,
+    presses: MutableInteractionSource,
     selected: Boolean,
     onSelect: () -> Unit,
     vertical: Boolean,
@@ -86,7 +90,6 @@ private fun PenButton(
     val turn by animateFloatAsState(if (open) 180f else 0f, tween(ARROW_MILLIS, easing = EaseOut), label = "arrow")
     val isSelected by rememberUpdatedState(selected)
     val select by rememberUpdatedState(onSelect)
-    val presses = remember { MutableInteractionSource() }
     val content: @Composable () -> Unit = {
         PenLine(Color(pen.color.argb), pen.width, Modifier.size(40.dp, 24.dp))
         Icon(

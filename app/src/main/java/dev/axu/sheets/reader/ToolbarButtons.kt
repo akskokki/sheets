@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.Interaction
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
@@ -46,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 /**
@@ -53,6 +55,12 @@ import kotlin.math.abs
  * flush, neither.
  */
 enum class ButtonHeight(internal val lift: Float) { Raised(1f), Flush(0f), Pressed(-2f) }
+
+/**
+ * Emitted to a button's presses to dip a raised face to flush and back, as if it took something,
+ * like the pen button taking a recent pen.
+ */
+object ButtonDip : Interaction
 
 /** Where a button sits in a [ToolbarButtonGroup], which decides its shape and the room around its icon. */
 enum class ButtonPosition { First, Middle, Last }
@@ -96,22 +104,34 @@ fun ToolbarButton(
     val pressed by presses.collectIsPressedAsState()
     // However short the tap, a press sinks all the way before the face comes back up.
     var sinking by remember { mutableStateOf(false) }
+    var dipping by remember { mutableStateOf(false) }
     val height = when {
         sinking -> ButtonHeight.Pressed
         !enabled -> ButtonHeight.Flush
         pressed -> ButtonHeight.Pressed
+        dipping && rest == ButtonHeight.Raised -> ButtonHeight.Flush
         else -> rest
     }
-    // Pressing is quick; everything else settles more slowly.
-    val millis = if (height == ButtonHeight.Pressed) PRESS_MILLIS else SETTLE_MILLIS
+    // Pressing and dipping are quick; everything else settles more slowly.
+    val millis = if (height == ButtonHeight.Pressed || dipping) PRESS_MILLIS else SETTLE_MILLIS
     val lift by animateFloatAsState(height.lift, tween(millis, easing = EaseOut), label = "lift")
     LaunchedEffect(presses) {
-        presses.interactions.filterIsInstance<PressInteraction.Press>().collectLatest {
-            sinking = true
+        launch {
+            presses.interactions.filterIsInstance<PressInteraction.Press>().collectLatest {
+                sinking = true
+                try {
+                    snapshotFlow { lift }.first { it == ButtonHeight.Pressed.lift }
+                } finally {
+                    sinking = false
+                }
+            }
+        }
+        presses.interactions.filterIsInstance<ButtonDip>().collectLatest {
+            dipping = true
             try {
-                snapshotFlow { lift }.first { it == ButtonHeight.Pressed.lift }
+                snapshotFlow { lift }.first { it <= ButtonHeight.Flush.lift }
             } finally {
-                sinking = false
+                dipping = false
             }
         }
     }
