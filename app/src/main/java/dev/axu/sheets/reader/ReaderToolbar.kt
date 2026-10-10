@@ -54,7 +54,7 @@ fun ReaderTopBar(
                 modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
             )
             tools()
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(EditGap))
             EditButtons(state, actions, vertical = false)
             PageNumber(state, Modifier.padding(start = 12.dp, end = 16.dp))
         }
@@ -72,9 +72,9 @@ fun ReaderSideRail(
     Surface(color = ToolbarColor, shadowElevation = 2.dp, modifier = modifier.width(ToolbarRailWidth).fillMaxHeight()) {
         Column(Modifier.padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             BackButton(actions)
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(EditGap))
             EditButtons(state, actions, vertical = true)
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(EditGap))
             tools()
             Spacer(Modifier.weight(1f))
             PageNumber(state, Modifier.padding(bottom = 16.dp))
@@ -91,7 +91,8 @@ private fun BackButton(actions: ToolbarActions) {
 
 @Composable
 private fun EditButtons(state: ToolbarState, actions: ToolbarActions, vertical: Boolean) {
-    ToolbarRow(vertical) {
+    // Side by side with nothing between, as one control, kept well apart from the drawing tools.
+    ToolbarRow(vertical, spacing = 0.dp) {
         IconButton(painterResource(R.drawable.ic_undo), "Undo", actions.onUndo, enabled = state.canUndo)
         IconButton(painterResource(R.drawable.ic_redo), "Redo", actions.onRedo, enabled = state.canRedo)
     }
@@ -99,16 +100,16 @@ private fun EditButtons(state: ToolbarState, actions: ToolbarActions, vertical: 
 
 /** Buttons side by side, or one above the other if [vertical]. */
 @Composable
-fun ToolbarRow(vertical: Boolean, content: @Composable () -> Unit) {
+fun ToolbarRow(vertical: Boolean, spacing: Dp = ToolSpacing, content: @Composable () -> Unit) {
     if (vertical) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(ToolSpacing),
+            verticalArrangement = Arrangement.spacedBy(spacing),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             content()
         }
     } else {
-        Row(horizontalArrangement = Arrangement.spacedBy(ToolSpacing), verticalAlignment = Alignment.CenterVertically) {
+        Row(horizontalArrangement = Arrangement.spacedBy(spacing), verticalAlignment = Alignment.CenterVertically) {
             content()
         }
     }
@@ -116,6 +117,9 @@ fun ToolbarRow(vertical: Boolean, content: @Composable () -> Unit) {
 
 /** Between buttons in a [ToolbarRow]. */
 val ToolSpacing = 4.dp
+
+/** Around undo and redo, setting them apart from the drawing tools. */
+private val EditGap = 28.dp
 
 @Composable
 private fun PageNumber(state: ToolbarState, modifier: Modifier = Modifier) {

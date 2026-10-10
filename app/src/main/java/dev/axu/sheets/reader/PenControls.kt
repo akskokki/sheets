@@ -31,6 +31,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.axu.sheets.R
 import dev.axu.sheets.ink.PenSettings
@@ -109,7 +110,7 @@ private fun PenButton(
             animationSpec = if (open) snap() else tween(CROSSFADE_MILLIS, easing = EaseOut),
             label = "pen",
         ) { (color, width) ->
-            PenLine(Color(color.argb), width, Modifier.size(40.dp, 24.dp))
+            PenLine(Color(color.argb), width, Modifier.size(LineWidth, 24.dp))
         }
         Icon(
             painterResource(R.drawable.ic_expand),
@@ -131,11 +132,13 @@ private fun PenButton(
             },
         selected = selected,
         selection = ink,
+        // Under the line, with the arrow off to its side; in the rail, the line is centered anyway.
+        barCenter = if (vertical) Dp.Unspecified else LineStart + LineWidth / 2,
     ) {
         if (vertical) {
             Column(Modifier.padding(bottom = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) { content() }
         } else {
-            Row(Modifier.padding(start = 12.dp, end = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.padding(start = LineStart, end = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 content()
             }
         }
@@ -181,6 +184,8 @@ fun PenLine(color: Color, width: PenWidth, modifier: Modifier = Modifier) {
 
 /** Lines are drawn in proportion to the pen's width. */
 private const val LINE_WIDTH_PER_POINT = 2f
+private val LineStart = 12.dp
+private val LineWidth = 40.dp
 private const val ARROW_MILLIS = 400
 private const val ARROW_FADE_MILLIS = 320
 private const val CROSSFADE_MILLIS = 240

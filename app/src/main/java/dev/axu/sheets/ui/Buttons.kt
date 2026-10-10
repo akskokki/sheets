@@ -39,7 +39,9 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.node.DelegatableNode
 import androidx.compose.ui.node.DrawModifierNode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.isSpecified
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -60,15 +62,16 @@ fun Button(
         enabled,
         selected,
         selection,
-        content,
+        content = content,
     )
 }
 
 /**
  * Every button in the app: a mark, such as an icon, a line or a word, with nothing around it. What
  * pressing it does is up to a gesture in [modifier], which reports to [presses]; while pressed, a
- * soft fill shows behind it. When [selected], a short bar in [selection] sits under it. Unless
- * [enabled], its mark fades, the only thing in the app that does.
+ * soft fill shows behind it. When [selected], a short bar in [selection] sits under it, centered
+ * on [barCenter] from its start if that's given, to line up with its mark rather than with all of
+ * it. Unless [enabled], its mark fades, the only thing in the app that does.
  */
 @Composable
 fun Button(
@@ -77,6 +80,7 @@ fun Button(
     enabled: Boolean = true,
     selected: Boolean = false,
     selection: Color = Ink,
+    barCenter: Dp = Dp.Unspecified,
     content: @Composable () -> Unit,
 ) {
     val alpha by animateFloatAsState(
@@ -101,7 +105,10 @@ fun Button(
                 val height = SelectionBarHeight.toPx()
                 drawRoundRect(
                     barColor,
-                    topLeft = Offset((size.width - width) / 2, size.height - SelectionBarInset.toPx() - height),
+                    topLeft = Offset(
+                        (if (barCenter.isSpecified) barCenter.toPx() else size.width / 2) - width / 2,
+                        size.height - SelectionBarInset.toPx() - height,
+                    ),
                     size = Size(width, height),
                     cornerRadius = CornerRadius(height / 2),
                     alpha = (bar * 2).coerceAtMost(1f),
