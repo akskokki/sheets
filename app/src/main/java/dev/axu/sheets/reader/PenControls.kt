@@ -1,6 +1,5 @@
 package dev.axu.sheets.reader
 
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -14,21 +13,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -95,7 +88,7 @@ private fun PenButton(
     val select by rememberUpdatedState(onSelect)
     val presses = remember { MutableInteractionSource() }
     val content: @Composable () -> Unit = {
-        WipingPenLine(Color(pen.color.argb), pen.width, Modifier.size(40.dp, 24.dp))
+        PenLine(Color(pen.color.argb), pen.width, Modifier.size(40.dp, 24.dp))
         Icon(
             painterResource(R.drawable.ic_expand),
             contentDescription = null,
@@ -149,70 +142,19 @@ private fun EraserButton(selected: Boolean, onChange: (Boolean) -> Unit) {
 /** A short wavy line in a pen's color and width, standing in for the pen. */
 @Composable
 fun PenLine(color: Color, width: PenWidth, modifier: Modifier = Modifier) {
-    Canvas(modifier) { drawPenLine(SolidColor(color), width) }
-}
-
-/**
- * A [PenLine] that, when the pen changes, wipes across from the left to the new color and width,
- * with a soft edge, so the change shows without the line moving.
- */
-@Composable
-private fun WipingPenLine(color: Color, width: PenWidth, modifier: Modifier = Modifier) {
-    val line = PenLook(color, width)
-    var shown by remember { mutableStateOf(line) }
-    var wipedOver by remember { mutableStateOf<PenLook?>(null) }
-    val wipe = remember { Animatable(1f) }
-    LaunchedEffect(line) {
-        if (line == shown) return@LaunchedEffect
-        // A change mid-wipe wipes over the line it was wiping in.
-        wipedOver = shown
-        shown = line
-        wipe.snapTo(0f)
-        wipe.animateTo(1f, tween(WIPE_MILLIS, easing = EaseOut))
-        wipedOver = null
-    }
     Canvas(modifier) {
-        val old = wipedOver
-        if (old == null) {
-            drawPenLine(SolidColor(shown.color), shown.width)
-            return@Canvas
+        // Drawn in a 40x24 box, scaled to fit.
+        val x = size.width / 40f
+        val y = size.height / 24f
+        val path = Path().apply {
+            moveTo(3 * x, 17 * y)
+            cubicTo(9 * x, 4 * y, 15 * x, 4 * y, 19 * x, 12 * y)
+            cubicTo(23 * x, 20 * y, 29 * x, 21 * y, 37 * x, 7 * y)
         }
-        // The edge travels from just before the line to just past it.
-        val edge = WipeEdge.toPx()
-        val at = -edge + (size.width + 2 * edge) * wipe.value
-        val gone = Brush.horizontalGradient(
-            listOf(old.color.copy(alpha = 0f), old.color),
-            startX = at - edge,
-            endX = at,
-        )
-        val come = Brush.horizontalGradient(
-            listOf(shown.color, shown.color.copy(alpha = 0f)),
-            startX = at - edge,
-            endX = at,
-        )
-        drawPenLine(gone, old.width)
-        drawPenLine(come, shown.width)
+        drawPath(path, color, style = Stroke((width.size * LINE_WIDTH_PER_POINT).dp.toPx(), cap = StrokeCap.Round))
     }
-}
-
-private data class PenLook(val color: Color, val width: PenWidth)
-
-private fun DrawScope.drawPenLine(brush: Brush, width: PenWidth) {
-    // Drawn in a 40x24 box, scaled to fit.
-    val x = size.width / 40f
-    val y = size.height / 24f
-    val path = Path().apply {
-        moveTo(3 * x, 17 * y)
-        cubicTo(9 * x, 4 * y, 15 * x, 4 * y, 19 * x, 12 * y)
-        cubicTo(23 * x, 20 * y, 29 * x, 21 * y, 37 * x, 7 * y)
-    }
-    drawPath(path, brush, style = Stroke((width.size * LINE_WIDTH_PER_POINT).dp.toPx(), cap = StrokeCap.Round))
 }
 
 /** Lines are drawn in proportion to the pen's width. */
 private const val LINE_WIDTH_PER_POINT = 2f
 private const val ARROW_MILLIS = 400
-private const val WIPE_MILLIS = 440
-
-/** How soft the edge of a [WipingPenLine]'s wipe is. */
-private val WipeEdge = 8.dp
