@@ -252,7 +252,7 @@ private const val SETTLE_MILLIS = 440
  * bluer it is.
  */
 private val RaisedColor = Color(0xFFFFFFFF)
-private val PressedColor = Color(0xFFF3F6F9)
+private val PressedColor = Color(0xFFE2E6EC)
 
 /** Groups, and the faces of buttons flush with them. */
 private val GroupColor = Color(0xFFEDF0F5)
