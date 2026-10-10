@@ -48,13 +48,16 @@ class ToolPressTest {
     }
 
     @Test
-    fun aToolIsSelectedTheMomentItIsTouchedAndShowsNoPress() {
+    fun aToolIsSelectedTheMomentItIsTouchedAndPressesIn() {
         rule.onNodeWithTag("tool").performTouchInput { down(center) }
-        rule.runOnIdle { assertTrue(selected) }
+        rule.runOnIdle {
+            assertTrue(selected)
+            assertTrue(shown.single() is PressInteraction.Press)
+        }
         rule.onNodeWithTag("tool").performTouchInput { up() }
         rule.runOnIdle {
             assertEquals(0, clicks)
-            assertEquals(emptyList<Interaction>(), shown)
+            assertTrue(shown.last() is PressInteraction.Release)
         }
     }
 

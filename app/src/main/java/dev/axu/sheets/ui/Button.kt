@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,8 +23,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,6 +42,9 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.first
 import kotlin.math.abs
 
 /**
@@ -70,7 +78,8 @@ fun Button(
 }
 
 /**
- * Every button in the app. Its face rests at [rest] and sinks while [presses] says it's pressed;
+ * Every button in the app. Its face rests at [rest] and sinks while [presses] says it's pressed,
+ * all the way even for a brief tap;
  * what pressing it does is up to a gesture in [modifier], which reports to [presses]. Unless
  * [enabled], it lies flush with its icon faded.
  */
@@ -84,7 +93,10 @@ fun Button(
     content: @Composable () -> Unit,
 ) {
     val pressed by presses.collectIsPressedAsState()
+    // However short the tap, a press sinks all the way before the face comes back up.
+    var sinking by remember { mutableStateOf(false) }
     val height = when {
+        sinking -> ButtonHeight.Pressed
         !enabled -> ButtonHeight.Flush
         pressed -> ButtonHeight.Pressed
         else -> rest
@@ -92,6 +104,16 @@ fun Button(
     // Pressing is quick; everything else settles more slowly.
     val millis = if (height == ButtonHeight.Pressed) PRESS_MILLIS else SETTLE_MILLIS
     val lift by animateFloatAsState(height.lift, tween(millis, easing = EaseOut), label = "lift")
+    LaunchedEffect(presses) {
+        presses.interactions.filterIsInstance<PressInteraction.Press>().collectLatest {
+            sinking = true
+            try {
+                snapshotFlow { lift }.first { it == ButtonHeight.Pressed.lift }
+            } finally {
+                sinking = false
+            }
+        }
+    }
     val face by animateColorAsState(height.face, tween(millis, easing = EaseOut), label = "face")
     val inkAlpha by animateFloatAsState(
         if (enabled) 1f else DISABLED_ALPHA,

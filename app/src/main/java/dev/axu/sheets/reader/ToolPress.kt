@@ -14,10 +14,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
 /**
- * Makes this a tool's button. Touching it while another tool is selected selects it at once, and
- * shows no press, as switching tools is the response. Once it's selected, pressing it reports to
- * [presses] and does [onClick] on release, unless the press slides off. The gesture keeps the first
- * [isSelected], [onSelect] and [onClick] it's given, so they must read the current state.
+ * Makes this a tool's button. Touching it while another tool is selected selects it at once; once
+ * it was selected, releasing it does [onClick], unless the press slides off. Either way the press
+ * is reported to [presses]. The gesture keeps the first [isSelected], [onSelect] and [onClick] it's
+ * given, so they must read the current state.
  */
 fun Modifier.toolPress(
     presses: MutableInteractionSource,
@@ -29,19 +29,17 @@ fun Modifier.toolPress(
         awaitEachGesture {
             val down = awaitFirstDown()
             down.consume()
-            if (!isSelected()) {
-                onSelect()
-                return@awaitEachGesture
-            }
             val press = PressInteraction.Press(down.position)
             presses.tryEmit(press)
+            val wasSelected = isSelected()
+            if (!wasSelected) onSelect()
             val up = waitForUpOrCancellation()
             if (up == null) {
                 presses.tryEmit(PressInteraction.Cancel(press))
             } else {
                 up.consume()
                 presses.tryEmit(PressInteraction.Release(press))
-                onClick()
+                if (wasSelected) onClick()
             }
         }
     }

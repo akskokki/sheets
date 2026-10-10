@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
@@ -119,8 +120,8 @@ class PenMenuState(private val onOpen: () -> Unit = {}, private val onClose: () 
 /**
  * Makes this the pen button: pressing it opens the menu, and pressing it again closes it. Pressing
  * and dragging into the menu picks the choice lifted over, leaving the menu open for more. While the
- * pen isn't [isSelected], touching it only calls [onSelect], at once. Presses that open or close the
- * menu are reported to [presses], until a drag leaves the button for the menu. The gesture keeps the
+ * pen isn't [isSelected], touching it only calls [onSelect], at once. Presses are reported to
+ * [presses], until a drag leaves the button for the menu. The gesture keeps the
  * first [isSelected] and [onSelect] it's given, so they must read the current state.
  */
 fun Modifier.opensPenMenu(
@@ -133,13 +134,18 @@ fun Modifier.opensPenMenu(
     .pointerInput(menu, presses) {
         awaitEachGesture {
             val down = awaitFirstDown()
+            var press: PressInteraction.Press? = PressInteraction.Press(down.position).also { presses.tryEmit(it) }
             if (!isSelected()) {
                 onSelect()
+                try {
+                    waitForUpOrCancellation()
+                } finally {
+                    press?.let { presses.tryEmit(PressInteraction.Release(it)) }
+                }
                 return@awaitEachGesture
             }
             val wasOpen = menu.isOpen
             menu.open()
-            var press: PressInteraction.Press? = PressInteraction.Press(down.position).also { presses.tryEmit(it) }
             var dragging = false
             try {
                 while (true) {
