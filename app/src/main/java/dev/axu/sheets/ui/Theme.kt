@@ -13,10 +13,10 @@ private val Colors = lightColorScheme(
     surface = Color.White,
 )
 
-/** Material's look, with [PressFill] in place of its ripple on everything tappable. */
+/** Material's look, with [Press] in place of its ripple on everything tappable. */
 @Composable
 fun SheetsTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = Colors) {
-        CompositionLocalProvider(LocalIndication provides PressFill, content = content)
+        CompositionLocalProvider(LocalIndication provides Press, content = content)
     }
 }

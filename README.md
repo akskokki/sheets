@@ -66,7 +66,11 @@ The two builds are separate apps with separate data. Sheets Dev keeps its folder
   opens the menu.
 - **Buttons** (`ui/Buttons.kt`), everywhere in the app: a mark (an icon, a pen's line, a word in
   the accent color) with nothing around it. A short bar under a button marks it selected, in the
-  pen's ink for the pen or black for the eraser. While pressed, a soft fill shows behind it, in
-  full however brief the tap (`PressFill`); the theme makes that the feedback for everything
-  tappable, list rows and menu choices included, and nothing reacts to the pen hovering. Only a
-  button that can't be used fades. The action comes on release, and sliding off cancels.
+  pen's ink for the pen or black for the eraser. Only a button that can't be used fades. The action
+  comes on release, and sliding off cancels.
+- **Press feedback** (`ui/Press.kt`), which the theme gives everything tappable, list rows and menu
+  choices included: what's pressed sinks into the surface, all the way however brief the tap, and
+  a wave spreads from the touch point, bending what it passes over and catching the light, until it
+  fades at the edge. An AGSL shader draws it over a layer of what's pressed (`LiquidPress`, whose
+  tunables are all at the top of its file). Before Android 13 a soft fill shows instead. Nothing
+  reacts to the pen hovering.

@@ -1,16 +1,14 @@
 package dev.axu.sheets.ui
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.IndicationNodeFactory
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -33,17 +31,12 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.node.DelegatableNode
-import androidx.compose.ui.node.DrawModifierNode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isSpecified
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
 
 /** Does [onClick] when released, unless the press slides off first. */
 @Composable
@@ -68,8 +61,8 @@ fun Button(
 
 /**
  * Every button in the app: a mark, such as an icon, a line or a word, with nothing around it. What
- * pressing it does is up to a gesture in [modifier], which reports to [presses]; while pressed, a
- * soft fill shows behind it. When [selected], a short bar in [selection] sits under it, centered
+ * pressing it does is up to a gesture in [modifier], which reports to [presses], and the theme's
+ * [Press] shows it. When [selected], a short bar in [selection] sits under it, centered
  * on [barCenter] from its start if that's given, to line up with its mark rather than with all of
  * it. Unless [enabled], its mark fades, the only thing in the app that does.
  */
@@ -96,7 +89,7 @@ fun Button(
     val barColor by animateColorAsState(selection, tween(SETTLE_MILLIS, easing = EaseOut), label = "selection")
     Box(
         modifier
-            .indication(presses, PressFill)
+            .indication(presses, LocalIndication.current)
             .drawWithContent {
                 drawContent()
                 if (bar == 0f) return@drawWithContent
@@ -153,70 +146,19 @@ fun TextButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
     }
 }
 
-/**
- * The feedback for everything tappable: a soft fill behind it while pressed, shown in full however
- * brief the tap. Pen hovers light nothing up, as the pen hovers whenever it's near the screen.
- */
-object PressFill : IndicationNodeFactory {
-    override fun create(interactionSource: InteractionSource): DelegatableNode = PressFillNode(interactionSource)
-
-    override fun equals(other: Any?) = other === this
-
-    override fun hashCode() = System.identityHashCode(this)
-}
-
-private class PressFillNode(private val presses: InteractionSource) :
-    Modifier.Node(),
-    DrawModifierNode {
-    private val alpha = Animatable(0f)
-
-    override fun onAttach() {
-        coroutineScope.launch {
-            var showing: Job? = null
-            presses.interactions.collect {
-                when (it) {
-                    is PressInteraction.Press -> showing = launch {
-                        alpha.animateTo(1f, tween(PRESS_MILLIS, easing = EaseOut))
-                    }
-
-                    is PressInteraction.Release, is PressInteraction.Cancel -> {
-                        val shown = showing
-                        launch {
-                            shown?.join()
-                            alpha.animateTo(0f, tween(SETTLE_MILLIS, easing = EaseOut))
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    override fun ContentDrawScope.draw() {
-        if (alpha.value > 0f) {
-            drawRoundRect(PressColor, cornerRadius = CornerRadius(PressCorner.toPx()), alpha = alpha.value)
-        }
-        drawContent()
-    }
-}
-
 /** Across a button, and the least a touch target is. */
 val ButtonSize = 48.dp
 private val IconSize = 22.dp
-private val PressCorner = 12.dp
 private val SelectionBarWidth = 20.dp
 private val SelectionBarHeight = 3.dp
 private val SelectionBarInset = 3.dp
 private const val MIN_BAR_SCALE = 0.3f
 private const val DISABLED_ALPHA = 0.38f
-private const val PRESS_MILLIS = 80
 private const val SETTLE_MILLIS = 400
 private const val SELECTION_MILLIS = 440
 
 /** Icons and lines on buttons, and the eraser's selection bar. */
 val Ink = Color(0xFF1F1F1F)
-
-/** Behind whatever is pressed, and the menu choice a drag is over. */
-val PressColor = Color(0xFFE9ECF0)
 
 /** CSS's ease-out, for buttons and what they move. */
 val EaseOut = CubicBezierEasing(0f, 0f, 0.58f, 1f)
