@@ -58,10 +58,11 @@ The two builds are separate apps with separate data. Sheets Dev keeps its folder
   reader (`PenMenu`) rather than in the clipped toolbar, and the touch that closes it doesn't also
   turn the page.
   The last pens used sit beside it (`RecentPens`, optional in settings), to switch back in one
-  tap; only the pen finally chosen in the menu counts, not every color tried on the way. The pen
-  button changes at once, dipping flush as it takes a recent pen (`ButtonDip`), while recent pens
-  that change place fade over toward their new places, or slide one place on (`RecentPenMoves`),
-  pushing the last one out ahead of them in one sweep. Touching the eraser or the pen selects it
+  tap; only the pen finally chosen in the menu counts, not every color tried on the way. Pens
+  tried in the menu show on the pen button at once. Taking a recent pen, it dips flush
+  (`ButtonDip`) as its line crossfades, while recent pens that change place fade over toward their
+  new places, or slide one place on (`RecentPenMoves`), pushing the last one out ahead of them in
+  one sweep. Touching the eraser or the pen selects it
   at once (`toolPress`); pressing the selected one again turns the eraser off or opens the menu.
 - **Toolbar buttons** (`ToolbarButtons.kt`), for the drawing tools and undo and redo: a face that
   sits raised, flush or pressed in a grey well (`ToolbarButtonGroup`), showing 1 dp of its side

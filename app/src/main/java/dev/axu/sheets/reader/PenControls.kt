@@ -1,6 +1,8 @@
 package dev.axu.sheets.reader
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -91,7 +93,15 @@ private fun PenButton(
     val isSelected by rememberUpdatedState(selected)
     val select by rememberUpdatedState(onSelect)
     val content: @Composable () -> Unit = {
-        PenLine(Color(pen.color.argb), pen.width, Modifier.size(40.dp, 24.dp))
+        // Pens tried in the menu show at once. Changed with the menu closed, by a recent pen, the line
+        // crossfades while the button dips to take it.
+        Crossfade(
+            pen.color to pen.width,
+            animationSpec = if (open) snap() else tween(CROSSFADE_MILLIS, easing = EaseOut),
+            label = "pen",
+        ) { (color, width) ->
+            PenLine(Color(color.argb), width, Modifier.size(40.dp, 24.dp))
+        }
         Icon(
             painterResource(R.drawable.ic_expand),
             contentDescription = null,
@@ -161,3 +171,4 @@ fun PenLine(color: Color, width: PenWidth, modifier: Modifier = Modifier) {
 /** Lines are drawn in proportion to the pen's width. */
 private const val LINE_WIDTH_PER_POINT = 2f
 private const val ARROW_MILLIS = 400
+private const val CROSSFADE_MILLIS = 240
