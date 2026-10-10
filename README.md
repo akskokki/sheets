@@ -60,7 +60,7 @@ The two builds are separate apps with separate data. Sheets Dev keeps its folder
   The last pens used sit beside it (`RecentPens`, optional in settings), to switch back in one
   tap; only the pen finally chosen in the menu counts, not every color tried on the way. The pen
   button changes at once, while recent pens that change place fade over toward their new places,
-  or slide one place on (`RecentPenMoves`). Touching the eraser or the pen selects it at once
+  or slide one place on (`RecentPenMoves`), pushing the last one out ahead of them in one sweep. Touching the eraser or the pen selects it at once
   (`toolPress`); pressing the selected one again turns the eraser off or opens the menu.
 - **Toolbar buttons** (`ToolbarButtons.kt`), for the drawing tools and undo and redo: a face that
   sits raised, flush or pressed in a grey well (`ToolbarButtonGroup`), showing 1 dp of its side
