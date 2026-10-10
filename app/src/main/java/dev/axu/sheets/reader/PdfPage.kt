@@ -19,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
@@ -45,7 +44,8 @@ private class Detail(val bitmap: ImageBitmap, val region: RectF)
  * optionally zoomed.
  *
  * [drawOverlay] draws on top of the page, clipped to the crop; [pageToCanvas] maps points to it,
- * and the zoom then magnifies it [zoomScale] times.
+ * and the zoom then magnifies it [zoomScale] times. Nothing shows until the page is rendered, so
+ * the overlay never appears without the page under it.
  */
 @Composable
 fun PdfPage(
@@ -115,9 +115,9 @@ fun PdfPage(
         }
         Box(modifier.then(pageModifier).clipToBounds()) {
             Canvas(Modifier.fillMaxSize()) {
+                val image = bitmap ?: return@Canvas
                 val pageToPx = size.width / crop.width()
-                drawRect(Color.White)
-                bitmap?.let { drawImage(it, dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt())) }
+                drawImage(image, dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()))
                 detail?.let {
                     val r = it.region
                     drawImage(
