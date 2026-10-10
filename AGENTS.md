@@ -55,6 +55,9 @@ Then check anything visible or touch-related in Sheets Dev on the device, using 
 screen recordings for timing. Judge performance and latency on a release build. A change is done
 when all of the above pass and it's been seen working.
 
+After every change, however small, run `./gradlew installDebug` so the user can inspect it in
+Sheets Dev, even when you skip checking it yourself.
+
 At the end of a session, run `./gradlew installRelease`. Release is minified, so open a sheet in
 Sheets to check that it starts and renders. Don't draw there. If the session changed ink or
 storage, ask the user to try it.
