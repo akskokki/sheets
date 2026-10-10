@@ -51,7 +51,7 @@ import kotlin.math.abs
  * Where a button's face sits. Raised, it shows its side below; pressed, the wall of its hole above;
  * flush, neither.
  */
-enum class ButtonHeight(internal val lift: Float) { Raised(1f), Flush(0f), Pressed(-1f) }
+enum class ButtonHeight(internal val lift: Float) { Raised(1f), Flush(0f), Pressed(-2f) }
 
 /** Where a button sits in a [ButtonGroup], which decides its shape and the room around its icon. */
 enum class ButtonPosition { Alone, First, Middle, Last }
@@ -237,7 +237,10 @@ private fun ButtonPosition.shape(vertical: Boolean): Shape = when (this) {
     }
 }
 
-/** How far a face rises or sinks, and so how much of the edge shows. */
+/**
+ * How far a raised face rises, and so how much of its side shows. A pressed face sinks twice as far,
+ * so the press reads deep while raised buttons stay balanced in their group.
+ */
 private val Travel = 1.dp
 
 /** Across a button, and along a round one. */
