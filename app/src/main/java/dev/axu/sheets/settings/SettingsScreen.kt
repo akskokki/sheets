@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -29,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import dev.axu.sheets.R
 import dev.axu.sheets.annotations.FolderAnnotationFiles
 import dev.axu.sheets.appContainer
+import dev.axu.sheets.ui.IconButton
 
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
@@ -42,7 +41,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onBack) { Icon(painterResource(R.drawable.ic_back), contentDescription = "Back") }
+            IconButton(painterResource(R.drawable.ic_back), "Back", onBack)
             Spacer(Modifier.width(8.dp))
             Text("Settings", style = MaterialTheme.typography.headlineLarge)
         }

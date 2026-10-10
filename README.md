@@ -59,14 +59,14 @@ The two builds are separate apps with separate data. Sheets Dev keeps its folder
   turn the page.
   The last pens used sit beside it (`RecentPens`, optional in settings), to switch back in one
   tap; only the pen finally chosen in the menu counts, not every color tried on the way. Pens
-  tried in the menu show on the pen button at once. Taking a recent pen, it dips flush
-  (`ButtonDip`) as its line crossfades, while recent pens that change place fade over toward their
-  new places, or slide one place on (`RecentPenMoves`), pushing the last one out ahead of them in
-  one sweep. Touching the eraser or the pen selects it
-  at once (`toolPress`); pressing the selected one again turns the eraser off or opens the menu.
-- **Toolbar buttons** (`ToolbarButtons.kt`), for the drawing tools and undo and redo: a face that
-  sits raised, flush or pressed in a grey well (`ToolbarButtonGroup`), showing 1 dp of its side
-  when raised or 2 dp of the wall of its hole when pressed. Buttons rest raised and lie flush with a
-  faded icon when unavailable; the selected tool is raised and the others flush, as are recent
-  pens. Every press sinks all the way, even a tap that selects a tool; the action comes on
-  release, and sliding off cancels.
+  tried in the menu show on the pen button at once. Taking a recent pen, its line crossfades, while
+  recent pens that change place fade over toward their new places, or slide one place on
+  (`RecentPenMoves`), pushing the last one out ahead of them in one sweep. Touching the eraser or
+  the pen selects it at once (`toolPress`); pressing the selected one again turns the eraser off or
+  opens the menu, whose arrow shows only while the pen is selected.
+- **Buttons** (`ui/Buttons.kt`), everywhere in the app: a mark (an icon, a pen's line, a word in
+  the accent color) with nothing around it. A short bar under a button marks it selected, in the
+  pen's ink for the pen or black for the eraser. While pressed, a soft fill shows behind it, in
+  full however brief the tap (`PressFill`); the theme makes that the feedback for everything
+  tappable, list rows and menu choices included, and nothing reacts to the pen hovering. Only a
+  button that can't be used fades. The action comes on release, and sliding off cancels.

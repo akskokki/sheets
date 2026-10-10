@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import dev.axu.sheets.ink.Pen
 import dev.axu.sheets.reader.RecentPenMoves.Arriving
 import dev.axu.sheets.reader.RecentPenMoves.Leaving
+import dev.axu.sheets.ui.Button
+import dev.axu.sheets.ui.ButtonSize
 
 /** A pen used before, to switch back to in one tap, getting there as [move] says. */
 @Composable
@@ -32,13 +34,20 @@ fun RecentPenButton(
     vertical: Boolean,
     onClick: () -> Unit,
 ) {
-    // Never raised, as it's never the pen in use: it only sinks while pressed.
-    ToolbarButton(
+    Button(
         onClick,
         Modifier
-            .then(if (vertical) Modifier.size(44.dp, RecentPenLength) else Modifier.size(RecentPenLength, 44.dp))
+            .then(
+                if (vertical) {
+                    Modifier.size(
+                        ButtonSize,
+                        RecentPenLength,
+                    )
+                } else {
+                    Modifier.size(RecentPenLength, ButtonSize)
+                },
+            )
             .semantics { contentDescription = "Switch to ${pen.color.name}, ${pen.width.name}" },
-        rest = ButtonHeight.Flush,
     ) {
         val line = Modifier.size(32.dp, 20.dp)
         val old = move?.old
@@ -128,8 +137,8 @@ private const val FADE_IN_MILLIS = 400
 private const val SHUFFLE_MILLIS = FADE_OUT_MILLIS + FADE_IN_MILLIS
 private val ShuffleNudge = 14.dp
 
-/** Along the group of tools; across it, a recent pen is as wide as every button. */
+/** Along the row of tools; across it, a recent pen is as wide as every button. */
 private val RecentPenLength = 52.dp
 
-/** From one recent pen's place to the next, side by side in their group. */
+/** From one recent pen's place to the next, side by side in their row. */
 private val PlaceToPlace = RecentPenLength + ToolSpacing

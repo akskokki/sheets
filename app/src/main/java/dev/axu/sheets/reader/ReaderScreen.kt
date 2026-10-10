@@ -27,7 +27,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -60,6 +59,9 @@ import dev.axu.sheets.R
 import dev.axu.sheets.appContainer
 import dev.axu.sheets.ink.LocalInkHost
 import dev.axu.sheets.pdf.size
+import dev.axu.sheets.ui.Button
+import dev.axu.sheets.ui.ButtonSize
+import dev.axu.sheets.ui.TextButton
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -99,7 +101,7 @@ fun ReaderScreen(uri: Uri, title: String, onBack: () -> Unit) {
 
             ReaderState.Failed -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Couldn't open $title", style = MaterialTheme.typography.bodyLarge)
-                TextButton(onClick = onBack) { Text("Back") }
+                TextButton("Back", onBack)
             }
 
             is ReaderState.Ready -> Reader(state, viewModel, title, onBack)
@@ -274,19 +276,20 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
     }
 }
 
-/** Shows the eraser is on while the toolbar is hidden; tapping it switches back to the pen. */
+/**
+ * Shows the eraser is on while the toolbar is hidden, selected as in the toolbar; tapping it
+ * switches back to the pen.
+ */
 @Composable
 private fun EraserReminder(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Surface(
-        onClick = onClick,
-        modifier = modifier
-            .size(48.dp)
-            .semantics { contentDescription = "Erasing. Switch back to the pen" },
-        shape = CircleShape,
-        color = Color.White,
-        shadowElevation = 3.dp,
-    ) {
-        Box(contentAlignment = Alignment.Center) {
+    Surface(modifier, shape = CircleShape, color = Color.White, shadowElevation = 3.dp) {
+        Button(
+            onClick,
+            Modifier
+                .size(ButtonSize)
+                .semantics { contentDescription = "Erasing. Switch back to the pen" },
+            selected = true,
+        ) {
             Icon(painterResource(R.drawable.ic_eraser), contentDescription = null, Modifier.size(22.dp))
         }
     }

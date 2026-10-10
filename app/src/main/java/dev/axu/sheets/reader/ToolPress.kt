@@ -11,7 +11,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
 
 /**
  * Makes this a tool's button. Touching it while another tool is selected selects it at once; once
@@ -50,6 +49,3 @@ fun Modifier.toolPress(
             true
         }
     }
-
-/** Between tools in a group. */
-val ToolSpacing = 4.dp

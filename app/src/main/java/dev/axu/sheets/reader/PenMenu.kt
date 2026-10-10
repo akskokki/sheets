@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import dev.axu.sheets.ink.PenSettings
 import dev.axu.sheets.ink.PenWidth
 import dev.axu.sheets.ink.Pens
+import dev.axu.sheets.ui.PressColor
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -315,7 +316,7 @@ private fun Choice(
             .size(width, 44.dp)
             .penMenuChoice(menu, key, onSelect)
             .clip(shape)
-            .then(if (menu.highlighted == key) Modifier.background(HighlightColor) else Modifier)
+            .then(if (menu.highlighted == key) Modifier.background(PressColor) else Modifier)
             .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
@@ -332,4 +333,3 @@ private fun Choice(
 }
 
 private val DividerColor = Color(0xFFE6E6E3)
-private val HighlightColor = Color(0xFFE3E8F2)

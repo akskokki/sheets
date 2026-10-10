@@ -15,20 +15,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +37,8 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.axu.sheets.R
 import dev.axu.sheets.appContainer
+import dev.axu.sheets.ui.IconButton
+import dev.axu.sheets.ui.TextButton
 
 @Composable
 fun LibraryScreen(onOpenSheet: (Sheet) -> Unit, onOpenSettings: () -> Unit) {
@@ -67,15 +65,9 @@ fun LibraryScreen(onOpenSheet: (Sheet) -> Unit, onOpenSettings: () -> Unit) {
                 modifier = Modifier.weight(1f),
             )
             if (viewModel.state != LibraryState.NoFolder) {
-                TextButton(onClick = { pickFolder.launch(null) }) {
-                    Icon(painterResource(R.drawable.ic_folder), contentDescription = null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Change folder")
-                }
+                TextButton("Change folder", { pickFolder.launch(null) }, icon = painterResource(R.drawable.ic_folder))
             }
-            IconButton(onClick = onOpenSettings) {
-                Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings")
-            }
+            IconButton(painterResource(R.drawable.ic_settings), "Settings", onOpenSettings)
         }
 
         if (viewModel.notesAtRisk) {
@@ -88,12 +80,12 @@ fun LibraryScreen(onOpenSheet: (Sheet) -> Unit, onOpenSettings: () -> Unit) {
 
             LibraryState.NoFolder -> Centered {
                 Message("Choose the folder where your sheet music PDFs live.")
-                Button(onClick = { pickFolder.launch(null) }) { Text("Choose folder") }
+                TextButton("Choose folder", { pickFolder.launch(null) })
             }
 
             LibraryState.Unavailable -> Centered {
                 Message("The sheet music folder can't be opened anymore.")
-                Button(onClick = { pickFolder.launch(null) }) { Text("Choose folder") }
+                TextButton("Choose folder", { pickFolder.launch(null) })
             }
 
             is LibraryState.Loaded ->
@@ -124,7 +116,7 @@ private fun NotesAtRiskBanner(onAllow: () -> Unit) {
                 modifier = Modifier.weight(1f),
             )
             Spacer(Modifier.width(16.dp))
-            Button(onClick = onAllow) { Text("Allow") }
+            TextButton("Allow", onAllow)
         }
     }
 }
