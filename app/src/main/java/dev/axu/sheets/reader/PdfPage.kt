@@ -44,7 +44,8 @@ private class Detail(val bitmap: ImageBitmap, val region: RectF)
  * The [crop] (in points) of one PDF page, scaled to fit the available space and centered,
  * optionally zoomed.
  *
- * [drawOverlay] draws on top of the page, clipped to the crop; [pageToCanvas] maps points to it.
+ * [drawOverlay] draws on top of the page, clipped to the crop; [pageToCanvas] maps points to it,
+ * and the zoom then magnifies it [zoomScale] times.
  */
 @Composable
 fun PdfPage(
@@ -53,7 +54,7 @@ fun PdfPage(
     pages: PageRenderer,
     zoom: PageZoom?,
     modifier: Modifier = Modifier,
-    drawOverlay: DrawScope.(pageToCanvas: Matrix) -> Unit = {},
+    drawOverlay: DrawScope.(pageToCanvas: Matrix, zoomScale: Float) -> Unit = { _, _ -> },
 ) {
     BoxWithConstraints(
         Modifier
@@ -133,6 +134,7 @@ fun PdfPage(
                         setTranslate(-crop.left, -crop.top)
                         postScale(pageToPx, pageToPx)
                     },
+                    zoom?.scale ?: 1f,
                 )
             }
         }

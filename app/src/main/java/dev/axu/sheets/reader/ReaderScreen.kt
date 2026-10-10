@@ -207,11 +207,11 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
                 pages = state.pages,
                 zoom = zoom.takeIf { index == pagerState.currentPage },
                 modifier = Modifier.onGloballyPositioned { inkTargets.onPagePositioned(index, it) },
-            ) { pageToCanvas ->
-                drawStrokes(ink.strokesOn(index), pageToCanvas, strokeRenderer)
+            ) { pageToCanvas, zoomScale ->
+                drawStrokes(ink.strokesOn(index), pageToCanvas, zoomScale, strokeRenderer)
                 for (erasure in viewModel.erasures) {
                     if (erasure.page == index) {
-                        drawStrokes(erasure.strokes, pageToCanvas, strokeRenderer, erasure.alpha.value)
+                        drawStrokes(erasure.strokes, pageToCanvas, zoomScale, strokeRenderer, erasure.alpha.value)
                     }
                 }
             }
