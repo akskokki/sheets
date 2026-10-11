@@ -66,6 +66,9 @@ storage, ask the user to try it.
 
 - Test on real sheets in Sheets Dev; its data is disposable. Launch it with
   `adb shell am start -n dev.axu.sheets.debug/dev.axu.sheets.MainActivity`.
+- Before sending input (taps, keys, pen, rotation), check that `adb shell dumpsys activity
+  activities | grep topResumedActivity` names `dev.axu.sheets.debug`. Device tests and installs
+  can leave Sheets on top, and input meant for Sheets Dev then pages through the user's sheets.
 - In Git Bash, prefix adb commands that take device paths with `MSYS_NO_PATHCONV=1`.
 - Pen strokes: `adb shell "input stylus motionevent DOWN x y; input stylus motionevent MOVE x y; ...; input stylus motionevent UP x y"`.
   Pen input on a page never reaches Compose, so Compose tests can't draw. Production devices
