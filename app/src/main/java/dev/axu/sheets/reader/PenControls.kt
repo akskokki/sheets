@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,7 +31,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.axu.sheets.R
 import dev.axu.sheets.ink.PenSettings
@@ -38,10 +38,11 @@ import dev.axu.sheets.ink.PenWidth
 import dev.axu.sheets.ui.Button
 import dev.axu.sheets.ui.ButtonSize
 import dev.axu.sheets.ui.EaseOut
+import dev.axu.sheets.ui.Held
 
 /**
  * The toolbar's drawing tools: the pen, optionally the ones used before it to switch back to, and
- * the eraser, in a row or (for the side rail) a column. A bar marks the selected tool.
+ * the eraser, in a row or (for the side rail) a column. The selected tool stays pressed in.
  */
 @Composable
 fun DrawingTools(
@@ -77,8 +78,8 @@ fun DrawingTools(
 }
 
 /**
- * The pen in use, drawn as a short line, its bar in its ink; pressing it opens [menu] to change its
- * color and width. While another tool is [selected], touching it only switches back to the pen.
+ * The pen in use, drawn as a short line, with an arrow beside it; pressing it opens [menu] to change
+ * its color and width. While another tool is [selected], touching it only switches back to the pen.
  */
 @Composable
 private fun PenButton(
@@ -94,17 +95,18 @@ private fun PenButton(
     val isSelected by rememberUpdatedState(selected)
     val select by rememberUpdatedState(onSelect)
     val presses = remember { MutableInteractionSource() }
-    val ink = Color(pen.color.argb)
-    val content: @Composable () -> Unit = {
-        // Pens tried in the menu show at once. Changed with the menu closed, by a recent pen, the line
-        // crossfades.
+    // Pens tried in the menu show at once. Changed with the menu closed, by a recent pen, the line
+    // crossfades.
+    val line: @Composable () -> Unit = {
         Crossfade(
             pen.color to pen.width,
             animationSpec = if (open) snap() else tween(CROSSFADE_MILLIS, easing = EaseOut),
             label = "pen",
         ) { (color, width) ->
-            PenLine(Color(color.argb), width, Modifier.size(LineWidth, 24.dp))
+            PenLine(Color(color.argb), width, Modifier.size(LineWidth, LineHeight))
         }
+    }
+    val arrow: @Composable () -> Unit = {
         Icon(
             painterResource(R.drawable.ic_expand),
             contentDescription = null,
@@ -115,23 +117,24 @@ private fun PenButton(
     }
     Button(
         presses,
-        (if (vertical) Modifier.size(ButtonSize, 60.dp) else Modifier.height(ButtonSize))
+        (if (vertical) Modifier.width(ButtonSize) else Modifier.height(ButtonSize))
             .opensPenMenu(menu, presses, isSelected = { isSelected }, onSelect = { select() })
             .semantics {
                 contentDescription = "Pen: ${pen.color.name}, ${pen.width.name}"
                 this.selected = selected
                 stateDescription = if (open) "Menu open" else "Menu closed"
             },
-        selected = selected,
-        selection = ink,
-        // Under the line, with the arrow off to its side; in the rail, the line is centered anyway.
-        barCenter = if (vertical) Dp.Unspecified else LineStart + LineWidth / 2,
     ) {
+        // Only the pen itself stays pressed in while selected, not the arrow, which opens the menu.
         if (vertical) {
-            Column(Modifier.padding(bottom = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) { content() }
+            Column(Modifier.padding(bottom = ArrowMargin), horizontalAlignment = Alignment.CenterHorizontally) {
+                Held(selected, Modifier.size(ButtonSize, LineHeight + LineMargin * 2)) { line() }
+                arrow()
+            }
         } else {
-            Row(Modifier.padding(start = LineStart, end = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                content()
+            Row(Modifier.padding(end = ArrowMargin), verticalAlignment = Alignment.CenterVertically) {
+                Held(selected, Modifier.size(LineWidth + LineMargin * 2, ButtonSize)) { line() }
+                arrow()
             }
         }
     }
@@ -176,7 +179,9 @@ fun PenLine(color: Color, width: PenWidth, modifier: Modifier = Modifier) {
 
 /** Lines are drawn in proportion to the pen's width. */
 private const val LINE_WIDTH_PER_POINT = 2f
-private val LineStart = 12.dp
 private val LineWidth = 40.dp
+private val LineHeight = 24.dp
+private val LineMargin = 8.dp
+private val ArrowMargin = 6.dp
 private const val ARROW_MILLIS = 400
 private const val CROSSFADE_MILLIS = 240

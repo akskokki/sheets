@@ -1,6 +1,5 @@
 package dev.axu.sheets.ui
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -26,17 +25,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.isSpecified
 
 /** Does [onClick] when released, unless the press slides off first. */
 @Composable
@@ -45,7 +38,6 @@ fun Button(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     selected: Boolean = false,
-    selection: Color = Ink,
     content: @Composable () -> Unit,
 ) {
     val presses = remember { MutableInteractionSource() }
@@ -54,7 +46,6 @@ fun Button(
         modifier.clickable(presses, indication = null, enabled = enabled, role = Role.Button, onClick = onClick),
         enabled,
         selected,
-        selection,
         content = content,
     )
 }
@@ -62,9 +53,8 @@ fun Button(
 /**
  * Every button in the app: a mark, such as an icon, a line or a word, with nothing around it. What
  * pressing it does is up to a gesture in [modifier], which reports to [presses], and the theme's
- * [Press] shows it. When [selected], a short bar in [selection] sits under it, centered
- * on [barCenter] from its start if that's given, to line up with its mark rather than with all of
- * it. Unless [enabled], its mark fades, the only thing in the app that does.
+ * [Press] shows it. While [selected], it stays pressed in. Unless [enabled], its mark fades, the
+ * only thing in the app that does.
  */
 @Composable
 fun Button(
@@ -72,8 +62,6 @@ fun Button(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     selected: Boolean = false,
-    selection: Color = Ink,
-    barCenter: Dp = Dp.Unspecified,
     content: @Composable () -> Unit,
 ) {
     val alpha by animateFloatAsState(
@@ -81,34 +69,7 @@ fun Button(
         tween(SETTLE_MILLIS, easing = EaseOut),
         label = "enabled",
     )
-    val bar by animateFloatAsState(
-        if (selected) 1f else 0f,
-        tween(SELECTION_MILLIS, easing = EmphasizedDecelerate),
-        label = "selected",
-    )
-    val barColor by animateColorAsState(selection, tween(SETTLE_MILLIS, easing = EaseOut), label = "selection")
-    Box(
-        modifier
-            .indication(presses, LocalIndication.current)
-            .drawWithContent {
-                drawContent()
-                if (bar == 0f) return@drawWithContent
-                // It grows from the middle as it fades in.
-                val width = SelectionBarWidth.toPx() * (MIN_BAR_SCALE + (1f - MIN_BAR_SCALE) * bar)
-                val height = SelectionBarHeight.toPx()
-                drawRoundRect(
-                    barColor,
-                    topLeft = Offset(
-                        (if (barCenter.isSpecified) barCenter.toPx() else size.width / 2) - width / 2,
-                        size.height - SelectionBarInset.toPx() - height,
-                    ),
-                    size = Size(width, height),
-                    cornerRadius = CornerRadius(height / 2),
-                    alpha = (bar * 2).coerceAtMost(1f),
-                )
-            },
-        contentAlignment = Alignment.Center,
-    ) {
+    Held(selected, modifier.indication(presses, LocalIndication.current)) {
         Box(Modifier.graphicsLayer { this.alpha = alpha }, contentAlignment = Alignment.Center) {
             CompositionLocalProvider(LocalContentColor provides Ink, content = content)
         }
@@ -149,17 +110,11 @@ fun TextButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
 /** Across a button, and the least a touch target is. */
 val ButtonSize = 48.dp
 private val IconSize = 22.dp
-private val SelectionBarWidth = 20.dp
-private val SelectionBarHeight = 3.dp
-private val SelectionBarInset = 3.dp
-private const val MIN_BAR_SCALE = 0.3f
 private const val DISABLED_ALPHA = 0.38f
 private const val SETTLE_MILLIS = 400
-private const val SELECTION_MILLIS = 440
 
-/** Icons and lines on buttons, and the eraser's selection bar. */
+/** Icons and lines on buttons. */
 val Ink = Color(0xFF1F1F1F)
 
 /** CSS's ease-out, for buttons and what they move. */
 val EaseOut = CubicBezierEasing(0f, 0f, 0.58f, 1f)
-private val EmphasizedDecelerate = CubicBezierEasing(0.2f, 0f, 0f, 1f)

@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -62,6 +61,7 @@ import dev.axu.sheets.ink.LocalInkHost
 import dev.axu.sheets.pdf.size
 import dev.axu.sheets.ui.Button
 import dev.axu.sheets.ui.ButtonSize
+import dev.axu.sheets.ui.PressCorner
 import dev.axu.sheets.ui.TextButton
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -303,12 +303,12 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
 }
 
 /**
- * Shows the eraser is on while the toolbar is hidden, selected as in the toolbar; tapping it
- * switches back to the pen.
+ * Shows the eraser is on while the toolbar is hidden, pressed in as in the toolbar and shaped like
+ * that; tapping it switches back to the pen.
  */
 @Composable
 private fun EraserReminder(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Surface(modifier, shape = CircleShape, color = Color.White, shadowElevation = 3.dp) {
+    Surface(modifier, shape = RoundedCornerShape(PressCorner), color = Color.White, shadowElevation = 3.dp) {
         Button(
             onClick,
             Modifier
