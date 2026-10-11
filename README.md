@@ -31,9 +31,11 @@ The two builds are separate apps with separate data. Sheets Dev keeps its folder
   screen in a horizontal pager, and reopen where you left off. Tap the left/right third to turn
   pages, the middle to toggle the toolbar (a top bar, or a side rail when the page leaves room).
   Pinch to zoom; the visible part is re-rendered sharply once the pinch settles.
+  A sheet opens with its page already rendered, so the music, its notes and the toolbar fade in
+  together; loading steps that don't depend on each other run at once.
   Blank side margins are cropped away (`PageCrops`): each page's printed area is found once per
-  document by scanning low-resolution renders. Notes beside the crop widen it, so they're never
-  hidden.
+  document by scanning low-resolution renders, on a first open the page that opens first and the
+  rest after it shows. Notes beside the crop widen it, so they're never hidden.
 - **Editing**: scribble back and forth over ink to erase it (`ScratchOut`, which ignores trills,
   hairpins, circles and scribbles over nothing), or turn on the eraser in the toolbar, which erases
   whole strokes it touches (`StrokeEraser`); one sweep is one undo. Its reach shows as a circle
