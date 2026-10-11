@@ -24,26 +24,25 @@ internal const val EDGE_BAND = 0.1f
 val CONTENT_DETECTION_VERSION = "1;$SCAN_WIDTH;$INK_THRESHOLD;$EDGE_BAND"
 
 /**
- * Where anything is printed on each page, as fractions of the page size, or null for blank pages.
+ * Where anything is printed on page [index], as fractions of the page size, or null if it's blank.
  *
- * Renders every page, so this is slow for long documents.
+ * Renders the page, so finding it for every page of a long document is slow.
  */
-suspend fun PdfDocument.contentBounds(): List<RectF?> = withContext(Dispatchers.Default) {
-    pageSizes.mapIndexed { index, size ->
-        val width = SCAN_WIDTH
-        val height = (width * size.height / size.width).roundToInt().coerceAtLeast(1)
-        val bitmap = render(index, width, height)
-        val pixels = IntArray(width * height)
-        bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
-        bitmap.recycle()
-        printedArea(pixels, width, height)?.let {
-            RectF(
-                it.left / width.toFloat(),
-                it.top / height.toFloat(),
-                it.right / width.toFloat(),
-                it.bottom / height.toFloat(),
-            )
-        }
+suspend fun PdfDocument.contentBounds(index: Int): RectF? = withContext(Dispatchers.Default) {
+    val size = pageSizes[index]
+    val width = SCAN_WIDTH
+    val height = (width * size.height / size.width).roundToInt().coerceAtLeast(1)
+    val bitmap = render(index, width, height)
+    val pixels = IntArray(width * height)
+    bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+    bitmap.recycle()
+    printedArea(pixels, width, height)?.let {
+        RectF(
+            it.left / width.toFloat(),
+            it.top / height.toFloat(),
+            it.right / width.toFloat(),
+            it.bottom / height.toFloat(),
+        )
     }
 }
 

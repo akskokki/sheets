@@ -16,6 +16,7 @@ import dev.axu.sheets.ink.ScratchOut
 import dev.axu.sheets.ink.StrokeEraser
 import dev.axu.sheets.pdf.PageRenderer
 import dev.axu.sheets.pdf.PdfDocument
+import dev.axu.sheets.pdf.contentBounds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -33,8 +34,11 @@ sealed interface ReaderState {
         val ink: DocumentInk,
         /** Identifies the document's contents; see [dev.axu.sheets.annotations.AnnotationStore]. */
         val documentKey: String,
-        /** The part of each page shown, in points. */
-        val crops: List<RectF>,
+        /**
+         * The part of each page shown, in points. On a sheet's first open, pages other than the
+         * first are null until the music on them has been found.
+         */
+        val crops: List<RectF?>,
         val initialPage: Int,
     ) : ReaderState
 }
@@ -74,28 +78,59 @@ class ReaderViewModel(private val uri: Uri, private val container: AppContainer)
         try {
             val key = keying.await()
             val loading = async { container.annotations.load(key) }
-            val music = if (container.settings.cropMargins) container.crops.music(document, key) else null
-            fun crop(index: Int, notes: List<Stroke>): RectF =
-                music?.let { cropPage(document.pageSizes[index], it[index], notes) }
-                    ?: document.pageSizes[index].toRect()
-
             val page = container.positions.pageOf(key).coerceIn(0, document.pageCount - 1)
+            val cropping = container.settings.cropMargins
+            val remembered = if (cropping) container.crops.remembered(document, key) else null
+            // On a sheet's first open, only the page that opens is looked at before it shows.
+            val openingMusic = when {
+                remembered != null -> remembered[page]
+                cropping -> document.contentBounds(page)
+                else -> null
+            }
+            fun crop(index: Int, music: RectF?, notes: List<Stroke>): RectF =
+                if (cropping) cropPage(document.pageSizes[index], music, notes) else document.pageSizes[index].toRect()
+
             val pages = PageRenderer(document)
             val viewport = viewport.filterNotNull().first()
             suspend fun render(crop: RectF) =
                 fittedSize(crop, viewport).let { pages.page(page, crop, it.width, it.height) }
             // Render while the notes load. Only notes beside the music change the crop, and then
             // the page is rendered again.
-            val bare = crop(page, notes = emptyList())
+            val bare = crop(page, openingMusic, notes = emptyList())
             val rendering = async { render(bare) }
 
             val ink = DocumentInk(loading.await())
-            val crops = List(document.pageCount) { crop(it, ink.strokesOn(it)) }
-            if (crops[page] == bare) {
+            val opening = crop(page, openingMusic, ink.strokesOn(page))
+            val crops = mutableStateListOf<RectF?>()
+            for (index in 0 until document.pageCount) {
+                crops += when {
+                    index == page -> opening
+                    cropping && remembered == null -> null
+                    else -> crop(index, remembered?.get(index), ink.strokesOn(index))
+                }
+            }
+            if (opening == bare) {
                 rendering.await()
             } else {
                 rendering.cancel()
-                render(crops[page])
+                render(opening)
+            }
+            if (cropping && remembered == null) {
+                viewModelScope.launch {
+                    try {
+                        container.crops.findRest(document, key, page, openingMusic) { index, music ->
+                            crops[index] = crop(index, music, ink.strokesOn(index))
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Log.w("Reader", "Can't find the music in $uri", e)
+                        // Show the pages left whole rather than not at all.
+                        for (index in crops.indices) {
+                            if (crops[index] == null) crops[index] = document.pageSizes[index].toRect()
+                        }
+                    }
+                }
             }
             ReaderState.Ready(document, pages, ink, key, crops, page)
         } catch (e: Exception) {

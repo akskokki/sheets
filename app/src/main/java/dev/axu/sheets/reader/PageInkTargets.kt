@@ -25,7 +25,7 @@ interface PageEraser {
  */
 class PageInkTargets(
     /** The part of each page shown, in points. */
-    private val crops: List<RectF>,
+    private val crops: List<RectF?>,
     private val brush: () -> Brush,
     /** Whether the pen erases rather than draws. */
     private val erasing: () -> Boolean,
@@ -61,7 +61,7 @@ class PageInkTargets(
         for ((page, coordinates) in pages) {
             val rect = coordinates.rootRect()
             if (point !in rect) continue
-            val crop = crops[page]
+            val crop = crops[page] ?: continue
             val pointsPerPx = crop.width() / rect.width
             val hostToPage = Matrix().apply {
                 setTranslate(-rect.left, -rect.top)

@@ -213,9 +213,10 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
                 },
         ) { index ->
             DisposableEffect(index) { onDispose { inkTargets.onPageRemoved(index) } }
+            val crop = state.crops[index] ?: return@HorizontalPager
             PdfPage(
                 index = index,
-                crop = state.crops[index],
+                crop = crop,
                 pages = state.pages,
                 zoom = zoom.takeIf { index == pagerState.currentPage },
                 modifier = Modifier.onGloballyPositioned { inkTargets.onPagePositioned(index, it) },
@@ -244,12 +245,11 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
             )
         }
         // Prefer the margin beside the pages (landscape), so the toolbar never covers the music.
-        // Pages are cropped differently, so go by the widest to keep the toolbar put while paging.
-        val widestPage = remember(state.crops, constraints) {
-            state.crops.maxOf {
-                it.width() *
-                    it.size.scaleToFit(constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat())
-            }
+        // Pages are cropped differently, so go by the widest to keep the toolbar put while paging,
+        // counting pages not cropped yet as whole.
+        val widestPage = state.crops.indices.maxOf { index ->
+            val crop = state.crops[index] ?: document.pageSizes[index].toRect()
+            crop.width() * crop.size.scaleToFit(constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat())
         }
         val useRail = (maxWidth - with(LocalDensity.current) { widestPage.toDp() }) / 2 >= ToolbarRailWidth
         val toolbarModifier = Modifier.onGloballyPositioned {

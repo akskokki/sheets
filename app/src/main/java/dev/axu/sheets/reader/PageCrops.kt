@@ -8,6 +8,7 @@ import dev.axu.sheets.pdf.CONTENT_DETECTION_VERSION
 import dev.axu.sheets.pdf.PageSize
 import dev.axu.sheets.pdf.PdfDocument
 import dev.axu.sheets.pdf.contentBounds
+import kotlin.math.abs
 
 /** Blank space kept beside the music, as a fraction of the page width: room to write next to it. */
 internal const val MARGIN = 0.03f
@@ -17,23 +18,39 @@ internal const val MARGIN = 0.03f
  * margins are kept.
  *
  * Finding the music means rendering every page, so where it is gets remembered per document,
- * keyed like annotations.
+ * keyed like annotations. On a document's first open, the page that opens is looked at first, and
+ * the rest after it shows.
  */
 class PageCrops(context: Context) {
     private val prefs = context.getSharedPreferences("content_bounds", Context.MODE_PRIVATE)
 
-    /** Where the music is on each page, for [cropPage]. */
-    suspend fun music(document: PdfDocument, documentKey: String): List<RectF?> =
-        remembered(documentKey)?.takeIf { it.size == document.pageCount }
-            ?: document.contentBounds().also { remember(documentKey, it) }
-
-    /** Pages are separated by ";", blank pages are empty. */
-    private fun remembered(documentKey: String): List<RectF?>? =
+    /** Where the music is on each page, for [cropPage], or null if it hasn't been found yet. */
+    fun remembered(document: PdfDocument, documentKey: String): List<RectF?>? =
+        // Pages are separated by ";", blank pages are empty.
         prefs.getString(prefKey(documentKey), null)?.split(';')?.map { page ->
             if (page.isEmpty()) return@map null
             val (left, top, right, bottom) = page.split(',').map { it.toFloat() }
             RectF(left, top, right, bottom)
+        }?.takeIf { it.size == document.pageCount }
+
+    /**
+     * Finds the music on every page but [first], whose music is [firstMusic], nearest pages first.
+     * Reports each page as it's found, and remembers them all once done.
+     */
+    suspend fun findRest(
+        document: PdfDocument,
+        documentKey: String,
+        first: Int,
+        firstMusic: RectF?,
+        onFound: (index: Int, music: RectF?) -> Unit,
+    ) {
+        val music = MutableList(document.pageCount) { if (it == first) firstMusic else null }
+        for (index in music.indices.sortedBy { abs(it - first) }.drop(1)) {
+            music[index] = document.contentBounds(index)
+            onFound(index, music[index])
         }
+        remember(documentKey, music)
+    }
 
     private fun remember(documentKey: String, content: List<RectF?>) = prefs.edit {
         // Drop what an earlier version of detection found.
