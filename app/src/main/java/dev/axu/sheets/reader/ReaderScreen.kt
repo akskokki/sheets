@@ -6,6 +6,7 @@ import android.view.WindowInsetsController
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -72,6 +73,9 @@ private val EraserReminderKey = Any()
 private const val ERASE_FADE_MILLIS = 180
 private const val MESSAGE_MILLIS = 900L
 
+/** Most sheets open sooner than this; a spinner that only flashes reads as a glitch, not progress. */
+private const val SPINNER_DELAY_MILLIS = 400L
+
 @Composable
 fun ReaderScreen(uri: Uri, title: String, onBack: () -> Unit) {
     val container = LocalContext.current.appContainer
@@ -99,14 +103,20 @@ fun ReaderScreen(uri: Uri, title: String, onBack: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         when (val state = viewModel.state) {
-            ReaderState.Loading -> CircularProgressIndicator()
+            ReaderState.Loading -> DelayedSpinner()
 
             ReaderState.Failed -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Couldn't open $title", style = MaterialTheme.typography.bodyLarge)
                 TextButton("Back", onBack)
             }
 
-            is ReaderState.Ready -> Reader(state, viewModel, title, onBack)
+            // The page, its notes and the toolbar fade in together.
+            is ReaderState.Ready -> AnimatedVisibility(
+                remember { MutableTransitionState(false).apply { targetState = true } },
+                enter = fadeIn(),
+            ) {
+                Reader(state, viewModel, title, onBack)
+            }
         }
     }
 }
@@ -295,6 +305,16 @@ private fun EraserReminder(onClick: () -> Unit, modifier: Modifier = Modifier) {
             Icon(painterResource(R.drawable.ic_eraser), contentDescription = null, Modifier.size(22.dp))
         }
     }
+}
+
+@Composable
+private fun DelayedSpinner() {
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(SPINNER_DELAY_MILLIS)
+        shown = true
+    }
+    AnimatedVisibility(shown, enter = fadeIn()) { CircularProgressIndicator() }
 }
 
 /** Identity matters: showing the same text again restarts the timeout. */
