@@ -45,8 +45,9 @@ class AnnotationStore(
     init {
         scope.launch(io) {
             notesFolder.collect { uri ->
-                folder = uri?.let { FolderAnnotationFiles(resolver, it) }
-                folder?.let(::backUpTo)
+                val files = uri?.let { FolderAnnotationFiles(resolver, it) }
+                folder = files
+                if (files != null) scope.launch { backUpTo(files) }
             }
         }
     }
@@ -116,18 +117,29 @@ class AnnotationStore(
         null
     }
 
-    /** Copies local annotations that are missing or outdated in [folder], e.g. once it becomes writable. */
-    private fun backUpTo(folder: AnnotationFiles) {
-        try {
-            for (key in local.keys()) {
-                val newer = readCopy(local, key) ?: continue
-                val existing = readCopy(folder, key)
-                if (existing == null || existing.savedAtMillis < newer.savedAtMillis) {
-                    writeSafely(folder, key, newer.bytes)
+    /**
+     * Copies local annotations that are missing or outdated in [folder], e.g. once it becomes
+     * writable. One document at a time, so a sheet opened meanwhile waits for one copy at most.
+     */
+    private suspend fun backUpTo(folder: AnnotationFiles) {
+        val keys = withContext(io) { local.keys() }
+        for (key in keys) {
+            val goOn = withContext(io) {
+                // A different folder was chosen since; it gets its own backup.
+                if (this@AnnotationStore.folder !== folder) return@withContext false
+                try {
+                    val newer = readCopy(local, key) ?: return@withContext true
+                    val existing = readCopy(folder, key)
+                    if (existing == null || existing.savedAtMillis < newer.savedAtMillis) {
+                        writeSafely(folder, key, newer.bytes)
+                    }
+                    true
+                } catch (e: Exception) {
+                    Log.e(TAG, "Can't back up annotations", e)
+                    false
                 }
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Can't back up annotations", e)
+            if (!goOn) return
         }
     }
 
