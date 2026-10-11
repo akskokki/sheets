@@ -6,7 +6,8 @@ import android.util.LruCache
 
 /**
  * Renders a document's pages. Whole pages are cached so paging back and forth is instant; zoomed
- * in detail is rendered on demand.
+ * in detail is rendered on demand. Bitmaps start uploading to the GPU as soon as they're rendered,
+ * so the frame that first shows one doesn't wait for it.
  *
  * Regions are in points. Don't modify one after passing it in: it's part of a cache key.
  */
@@ -23,11 +24,14 @@ class PageRenderer(private val render: suspend (index: Int, width: Int, height: 
 
     /** [region] of page [index] as shown when not zoomed in, scaled to [width] x [height] pixels. */
     suspend fun page(index: Int, region: RectF, width: Int, height: Int): Bitmap = cached(index, region, width, height)
-        ?: render(index, width, height, region).also { cache.put(Key(index, region, width, height), it) }
+        ?: render(index, width, height, region).also {
+            it.prepareToDraw()
+            cache.put(Key(index, region, width, height), it)
+        }
 
     /** [region] of page [index] scaled to [width] x [height] pixels, for zoomed in detail. */
     suspend fun detail(index: Int, region: RectF, width: Int, height: Int): Bitmap =
-        render(index, width, height, region)
+        render(index, width, height, region).also { it.prepareToDraw() }
 
     private companion object {
         // A full-screen page on the target tablet is ~16 MB; this keeps about six.

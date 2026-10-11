@@ -21,6 +21,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
@@ -73,7 +74,7 @@ fun PdfPage(
     ) {
         val viewport = IntSize(constraints.maxWidth, constraints.maxHeight)
         val fitScale = crop.size.scaleToFit(viewport.width.toFloat(), viewport.height.toFloat())
-        val fitted = IntSize((crop.width() * fitScale).roundToInt(), (crop.height() * fitScale).roundToInt())
+        val fitted = fittedSize(crop, viewport)
 
         // produceState keeps its value when the keys change (e.g. on rotation), so the previous
         // size's bitmap stays up, stretched to fit, until the new one is ready.
@@ -83,7 +84,8 @@ fun PdfPage(
             crop,
             fitted,
         ) {
-            value = pages.page(index, crop, fitted.width, fitted.height).asImageBitmap()
+            val rendered = pages.page(index, crop, fitted.width, fitted.height)
+            if (value?.asAndroidBitmap() !== rendered) value = rendered.asImageBitmap()
         }
 
         // Zoomed in, the fitted bitmap gets blurry; overlay the visible part rendered sharply.
@@ -139,6 +141,12 @@ fun PdfPage(
             }
         }
     }
+}
+
+/** The size in pixels of a page's [crop] (in points) when fitted to a [viewport]. */
+fun fittedSize(crop: RectF, viewport: IntSize): IntSize {
+    val fitScale = crop.size.scaleToFit(viewport.width.toFloat(), viewport.height.toFloat())
+    return IntSize((crop.width() * fitScale).roundToInt(), (crop.height() * fitScale).roundToInt())
 }
 
 /** The part of the [crop] visible in the viewport at the given zoom, in points, or null if none is. */

@@ -22,12 +22,10 @@ internal const val MARGIN = 0.03f
 class PageCrops(context: Context) {
     private val prefs = context.getSharedPreferences("content_bounds", Context.MODE_PRIVATE)
 
-    /** The part of each page to show, in points; see [cropPage]. */
-    suspend fun of(document: PdfDocument, documentKey: String, ink: DocumentInk): List<RectF> {
-        val content = remembered(documentKey)?.takeIf { it.size == document.pageCount }
+    /** Where the music is on each page, for [cropPage]. */
+    suspend fun music(document: PdfDocument, documentKey: String): List<RectF?> =
+        remembered(documentKey)?.takeIf { it.size == document.pageCount }
             ?: document.contentBounds().also { remember(documentKey, it) }
-        return document.pageSizes.mapIndexed { index, size -> cropPage(size, content[index], ink.strokesOn(index)) }
-    }
 
     /** Pages are separated by ";", blank pages are empty. */
     private fun remembered(documentKey: String): List<RectF?>? =

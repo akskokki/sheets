@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -93,7 +94,8 @@ fun ReaderScreen(uri: Uri, title: String, onBack: () -> Unit) {
         Modifier
             .fillMaxSize()
             .background(Backdrop)
-            .then(if (settings.fullScreen) Modifier else Modifier.systemBarsPadding()),
+            .then(if (settings.fullScreen) Modifier else Modifier.systemBarsPadding())
+            .onSizeChanged(viewModel::onViewportChanged),
         contentAlignment = Alignment.Center,
     ) {
         when (val state = viewModel.state) {
