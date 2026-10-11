@@ -53,8 +53,9 @@ private const val SHADOW_LENGTH = 3f
 private const val SHADOW_GREEN = 0.06f
 private const val SHADOW_BLUE = 0.16f
 
-/** How far the mark settles into the floor. */
+/** How far the mark settles into the floor, and how far red and blue part from green as it does. */
 private const val SINK = 0.6f
+private const val FRINGE = 0.4f
 
 private val SHADER = """
 uniform shader content;
@@ -84,7 +85,12 @@ half4 main(float2 at) {
     float floorDepth = depth * floorness;
     float shadow = floorDepth * smoothstep(-1.2, 1.0, box(p + normalize(light.xy) * $SHADOW_LENGTH * depth));
 
-    float4 color = float4(content.eval(at - float2(0.0, $SINK * floorDepth * density)));
+    // Red and blue settle a little further and less far than green, like through a lens.
+    float2 sink = float2(0.0, -$SINK * floorDepth * density);
+    float4 r = float4(content.eval(at + sink * (1.0 + $FRINGE)));
+    float4 c = float4(content.eval(at + sink));
+    float4 b = float4(content.eval(at + sink * (1.0 - $FRINGE)));
+    float4 color = float4(r.r, c.g, b.b, max(c.a, max(r.a, b.a)));
     float dim = 1.0 - (1.0 - $FLOOR * floorDepth) * (1.0 - $SHADOW * shadow);
     color = color * (1.0 - dim) + float4(0.0, $SHADOW_GREEN, $SHADOW_BLUE, 1.0) * dim;
 
