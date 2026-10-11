@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -44,9 +45,10 @@ private class Detail(val bitmap: ImageBitmap, val region: RectF)
  * The [crop] (in points) of one PDF page, scaled to fit the available space and centered,
  * optionally zoomed.
  *
- * [drawOverlay] draws on top of the page, clipped to the crop; [pageToCanvas] maps points to it,
- * and the zoom then magnifies it [zoomScale] times. Nothing shows until the page is rendered, so
- * the overlay never appears without the page under it.
+ * [overlays] draw on top of the page in order, clipped to the crop; [pageToCanvas] maps points to
+ * it, and the zoom then magnifies it [zoomScale] times. Each is drawn in a layer of its own, so a
+ * change in one doesn't redraw the page or the others. Nothing shows until the page is rendered,
+ * so overlays never appear without the page under them.
  */
 @Composable
 fun PdfPage(
@@ -55,7 +57,7 @@ fun PdfPage(
     pages: PageRenderer,
     zoom: PageZoom?,
     modifier: Modifier = Modifier,
-    drawOverlay: DrawScope.(pageToCanvas: Matrix, zoomScale: Float) -> Unit = { _, _ -> },
+    overlays: List<DrawScope.(pageToCanvas: Matrix, zoomScale: Float) -> Unit> = emptyList(),
 ) {
     BoxWithConstraints(
         Modifier
@@ -115,8 +117,10 @@ fun PdfPage(
         val pageModifier = with(LocalDensity.current) {
             Modifier.size(fitted.width.toDp(), fitted.height.toDp())
         }
+        val rendered by remember { derivedStateOf { bitmap != null } }
         Box(modifier.then(pageModifier).clipToBounds()) {
-            Canvas(Modifier.fillMaxSize()) {
+            if (!rendered) return@Box
+            Canvas(Modifier.fillMaxSize().graphicsLayer()) {
                 val image = bitmap ?: return@Canvas
                 val pageToPx = size.width / crop.width()
                 drawImage(image, dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()))
@@ -131,13 +135,16 @@ fun PdfPage(
                         dstSize = IntSize((r.width() * pageToPx).roundToInt(), (r.height() * pageToPx).roundToInt()),
                     )
                 }
-                drawOverlay(
-                    Matrix().apply {
+            }
+            for (overlay in overlays) {
+                Canvas(Modifier.fillMaxSize().graphicsLayer()) {
+                    val pageToPx = size.width / crop.width()
+                    val pageToCanvas = Matrix().apply {
                         setTranslate(-crop.left, -crop.top)
                         postScale(pageToPx, pageToPx)
-                    },
-                    zoom?.scale ?: 1f,
-                )
+                    }
+                    overlay(pageToCanvas, zoom?.scale ?: 1f)
+                }
             }
         }
     }

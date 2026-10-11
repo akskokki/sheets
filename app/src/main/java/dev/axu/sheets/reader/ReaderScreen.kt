@@ -220,14 +220,26 @@ private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: 
                 pages = state.pages,
                 zoom = zoom.takeIf { index == pagerState.currentPage },
                 modifier = Modifier.onGloballyPositioned { inkTargets.onPagePositioned(index, it) },
-            ) { pageToCanvas, zoomScale ->
-                drawStrokes(ink.strokesOn(index), pageToCanvas, zoomScale, strokeRenderer)
-                for (erasure in viewModel.erasures) {
-                    if (erasure.page == index) {
-                        drawStrokes(erasure.strokes, pageToCanvas, zoomScale, strokeRenderer, erasure.alpha.value)
-                    }
-                }
-            }
+                overlays = listOf(
+                    { pageToCanvas, zoomScale ->
+                        drawStrokes(ink.strokesOn(index), pageToCanvas, zoomScale, strokeRenderer)
+                    },
+                    // Fading out frame by frame, so kept apart from the rest of the ink.
+                    { pageToCanvas, zoomScale ->
+                        for (erasure in viewModel.erasures) {
+                            if (erasure.page == index) {
+                                drawStrokes(
+                                    erasure.strokes,
+                                    pageToCanvas,
+                                    zoomScale,
+                                    strokeRenderer,
+                                    erasure.alpha.value,
+                                )
+                            }
+                        }
+                    },
+                ),
+            )
         }
 
         val toolbarState = ToolbarState(

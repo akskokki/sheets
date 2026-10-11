@@ -46,9 +46,13 @@ class PdfPageTest {
         }
         rule.setContent {
             Box(Modifier.size(with(LocalDensity.current) { sizePx.toDp() }).testTag("page")) {
-                PdfPage(0, RectF(0f, 0f, 100f, 100f), pages, zoom = null) { _, _ ->
-                    drawRect(Color.Red, Offset(10f, 10f), Size(40f, 40f))
-                }
+                PdfPage(
+                    0,
+                    RectF(0f, 0f, 100f, 100f),
+                    pages,
+                    zoom = null,
+                    overlays = listOf({ _, _ -> drawRect(Color.Red, Offset(10f, 10f), Size(40f, 40f)) }),
+                )
             }
         }
 
