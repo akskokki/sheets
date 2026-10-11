@@ -70,9 +70,11 @@ The two builds are separate apps with separate data. Sheets Dev keeps its folder
   the pen selects it at once (`toolPress`); pressing the selected one again turns the eraser off or
   opens the menu.
 - **Buttons** (`ui/Buttons.kt`), everywhere in the app: a mark (an icon, a pen's line, a word in
-  the accent color) with nothing around it. A selected tool stays pressed in (`Held`); for the pen,
-  only its line does, not the arrow beside it that opens the menu. Only a button that can't be used
+  the accent color) with nothing around it. A selected tool stays pressed in (`sinks`); for the
+  pen, only its line does, pressed or selected, not the arrow beside it that opens the menu. Only a button that can't be used
   fades. The action comes on release, and sliding off cancels.
 - **Press feedback** (`ui/Press.kt`), which the theme gives everything tappable, list rows and menu
-  choices included: a soft rounded fill behind what's pressed, shown in full however brief the tap,
-  then fading slowly. Nothing reacts to the pen hovering.
+  choices included: what's pressed sinks into the surface, all the way however brief the tap, then
+  slowly rises back. An AGSL shader draws the recess, a lit wall at the rim and a darker floor with
+  the rim's shadow across it, over a layer of what's pressed (`Recess`, whose tunables are at the
+  top of its file). Before Android 13 a soft fill shows instead. Nothing reacts to the pen hovering.

@@ -3,9 +3,7 @@ package dev.axu.sheets.ui
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -69,7 +67,7 @@ fun Button(
         tween(SETTLE_MILLIS, easing = EaseOut),
         label = "enabled",
     )
-    Held(selected, modifier.indication(presses, LocalIndication.current)) {
+    Box(modifier.sinks(presses, held = selected), contentAlignment = Alignment.Center) {
         Box(Modifier.graphicsLayer { this.alpha = alpha }, contentAlignment = Alignment.Center) {
             CompositionLocalProvider(LocalContentColor provides Ink, content = content)
         }

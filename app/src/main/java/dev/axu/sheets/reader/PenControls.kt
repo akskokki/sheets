@@ -38,7 +38,8 @@ import dev.axu.sheets.ink.PenWidth
 import dev.axu.sheets.ui.Button
 import dev.axu.sheets.ui.ButtonSize
 import dev.axu.sheets.ui.EaseOut
-import dev.axu.sheets.ui.Held
+import dev.axu.sheets.ui.Ink
+import dev.axu.sheets.ui.sinks
 
 /**
  * The toolbar's drawing tools: the pen, optionally the ones used before it to switch back to, and
@@ -110,13 +111,13 @@ private fun PenButton(
         Icon(
             painterResource(R.drawable.ic_expand),
             contentDescription = null,
+            tint = Ink,
             modifier = Modifier
                 .size(18.dp)
                 .rotate(turn + if (vertical) -90f else 0f),
         )
     }
-    Button(
-        presses,
+    Box(
         (if (vertical) Modifier.width(ButtonSize) else Modifier.height(ButtonSize))
             .opensPenMenu(menu, presses, isSelected = { isSelected }, onSelect = { select() })
             .semantics {
@@ -124,16 +125,19 @@ private fun PenButton(
                 this.selected = selected
                 stateDescription = if (open) "Menu open" else "Menu closed"
             },
+        contentAlignment = Alignment.Center,
     ) {
-        // Only the pen itself stays pressed in while selected, not the arrow, which opens the menu.
+        // Only the pen itself sinks in, pressed or selected, not the arrow beside it, which opens the
+        // menu.
+        val well = Modifier.sinks(presses, held = selected)
         if (vertical) {
             Column(Modifier.padding(bottom = ArrowMargin), horizontalAlignment = Alignment.CenterHorizontally) {
-                Held(selected, Modifier.size(ButtonSize, LineHeight + LineMargin * 2)) { line() }
+                Box(well.size(ButtonSize, LineHeight + LineMargin * 2), contentAlignment = Alignment.Center) { line() }
                 arrow()
             }
         } else {
             Row(Modifier.padding(end = ArrowMargin), verticalAlignment = Alignment.CenterVertically) {
-                Held(selected, Modifier.size(LineWidth + LineMargin * 2, ButtonSize)) { line() }
+                Box(well.size(LineWidth + LineMargin * 2, ButtonSize), contentAlignment = Alignment.Center) { line() }
                 arrow()
             }
         }
