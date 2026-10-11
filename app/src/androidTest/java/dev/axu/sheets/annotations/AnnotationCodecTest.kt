@@ -39,6 +39,24 @@ class AnnotationCodecTest {
     }
 
     @Test
+    fun everyStrokeComesBackInPlace() {
+        // Enough strokes to be built on several threads at once.
+        val strokes = List(500) { testStroke(it.toFloat(), it * 2f) }
+        val pages = mapOf(0 to strokes.take(300), 1 to strokes.drop(300))
+        val (_, decoded) = roundTrip(Annotations(pages, strokes))
+
+        for (page in pages.keys) {
+            val expected = pages.getValue(page)
+            val actual = decoded.pages.getValue(page)
+            assertEquals(expected.map { it.inputs.get(0).y }, actual.map { it.inputs.get(0).y })
+            assertEquals(
+                expected.map { it.shape.computeBoundingBox()?.xMin },
+                actual.map { it.shape.computeBoundingBox()?.xMin },
+            )
+        }
+    }
+
+    @Test
     fun savedTimeCanBeReadWithoutDecoding() {
         val (bytes, _) = roundTrip(Annotations(mapOf(0 to listOf(testStroke(0f, 0f))), emptyList()), savedAt = 42L)
         assertEquals(42L, bytes.inputStream().use(AnnotationCodec::savedAtMillis))

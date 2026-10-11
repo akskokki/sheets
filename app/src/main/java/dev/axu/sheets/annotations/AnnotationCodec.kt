@@ -14,6 +14,7 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.IdentityHashMap
+import java.util.stream.Collectors
 
 /**
  * A document's ink: strokes per page index (in drawing order within the page, which is also their
@@ -101,13 +102,16 @@ internal object AnnotationCodec {
                 epsilon = readFloat(),
             )
         }
-        val pages = HashMap<Int, List<Stroke>>()
-        repeat(readInt()) {
+        val encodedPages = List(readInt()) {
             val page = readInt()
-            pages[page] = List(readInt()) {
-                val brush = brushes[readInt()]
-                Stroke(brush, StrokeInputBatch.decode(readBlob()))
-            }
+            page to List(readInt()) { EncodedStroke(brushes[readInt()], readBlob()) }
+        }
+        val strokes = build(encodedPages.flatMap { it.second })
+        val pages = HashMap<Int, List<Stroke>>()
+        var next = 0
+        for ((page, encoded) in encodedPages) {
+            pages[page] = strokes.subList(next, next + encoded.size).toList()
+            next += encoded.size
         }
         val drawingOrder = if (version >= 2) {
             List(readInt()) {
@@ -121,6 +125,16 @@ internal object AnnotationCodec {
         }
         Annotations(pages, drawingOrder)
     }
+
+    private class EncodedStroke(val brush: Brush, val inputs: InputStream)
+
+    /**
+     * Builds [encoded] strokes on all cores, in order. Each computes its shape when built, which is
+     * most of the time it takes to load notes.
+     */
+    private fun build(encoded: List<EncodedStroke>): List<Stroke> = encoded.parallelStream()
+        .map { Stroke(it.brush, StrokeInputBatch.decode(it.inputs)) }
+        .collect(Collectors.toList())
 
     /** Reads the header, returning the format version and the save time. */
     private fun DataInputStream.readHeader(): Pair<Int, Long> {
