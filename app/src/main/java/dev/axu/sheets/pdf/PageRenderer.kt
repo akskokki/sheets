@@ -29,6 +29,11 @@ class PageRenderer(private val render: suspend (index: Int, width: Int, height: 
             cache.put(Key(index, region, width, height), it)
         }
 
+    /** Forgets every page but [index], to hold less while the document isn't on screen. */
+    fun keepOnly(index: Int) {
+        for (key in cache.snapshot().keys) if (key.index != index) cache.remove(key)
+    }
+
     /** [region] of page [index] scaled to [width] x [height] pixels, for zoomed in detail. */
     suspend fun detail(index: Int, region: RectF, width: Int, height: Int): Bitmap =
         render(index, width, height, region).also { it.prepareToDraw() }

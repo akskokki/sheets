@@ -54,7 +54,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.ink.rendering.android.canvas.CanvasStrokeRenderer
-import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.axu.sheets.R
@@ -79,16 +78,19 @@ private const val SPINNER_DELAY_MILLIS = 400L
 @Composable
 fun ReaderScreen(uri: Uri, title: String, onBack: () -> Unit) {
     val container = LocalContext.current.appContainer
-    // Scoped to this visit rather than the activity, so leaving releases the document and its pages.
+    val settings = container.settings
+    // Kept loaded after leaving, until another sheet opens; see LoadedSheet.
     val owner = remember(uri) {
         object : ViewModelStoreOwner {
-            override val viewModelStore = ViewModelStore()
+            override val viewModelStore = container.loadedSheet.storeFor(uri, settings.cropMargins)
         }
     }
-    DisposableEffect(owner) { onDispose { owner.viewModelStore.clear() } }
     val viewModel = viewModel(owner) { ReaderViewModel(uri, container) }
-
-    val settings = container.settings
+    DisposableEffect(viewModel) {
+        onDispose {
+            if (viewModel.state is ReaderState.Failed) container.loadedSheet.release() else viewModel.onLeft()
+        }
+    }
 
     BackHandler(onBack = onBack)
     if (settings.fullScreen) ImmersiveMode()
@@ -125,7 +127,7 @@ fun ReaderScreen(uri: Uri, title: String, onBack: () -> Unit) {
 private fun Reader(state: ReaderState.Ready, viewModel: ReaderViewModel, title: String, onBack: () -> Unit) {
     val document = state.document
     val ink = state.ink
-    val pagerState = rememberPagerState(initialPage = state.initialPage) { document.pageCount }
+    val pagerState = rememberPagerState(initialPage = viewModel.page) { document.pageCount }
     var chromeVisible by rememberSaveable { mutableStateOf(true) }
     var message by remember { mutableStateOf<Message?>(null) }
     val zoom = remember { PageZoom() }

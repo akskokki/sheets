@@ -42,6 +42,8 @@ The two builds are separate apps with separate data. Sheets Dev keeps its folder
   around the pen while erasing, and faintly while the pen hovers. While the eraser is on and the
   toolbar hidden, a chip in the corner says so. Two-finger tap undoes, three-finger tap redoes.
   Undo and redo act on the page in view, and only on edits made since the sheet was opened.
+  Leaving a sheet keeps it loaded (`LoadedSheet`), history included, until another sheet is
+  opened, so going back to it is instant.
 - **Ink** (`ink/`): `InkHostLayout` wraps the whole UI at the View level. Pen input that starts on a
   page is drawn as low-latency wet ink by Jetpack Ink's front-buffered `InProgressStrokesView` and
   never reaches Compose; fingers (and the pen anywhere else) work the UI as usual. `PalmGuard`

@@ -6,6 +6,7 @@ import dev.axu.sheets.annotations.AnnotationStore
 import dev.axu.sheets.annotations.LocalAnnotationFiles
 import dev.axu.sheets.ink.PenSettings
 import dev.axu.sheets.library.LibraryRepository
+import dev.axu.sheets.reader.LoadedSheet
 import dev.axu.sheets.reader.PageCrops
 import dev.axu.sheets.reader.ReadingPositions
 import dev.axu.sheets.settings.Settings
@@ -32,6 +33,7 @@ class AppContainer(context: Context) {
     val library = LibraryRepository(context)
     val positions = ReadingPositions(context)
     val crops = PageCrops(context)
+    val loadedSheet = LoadedSheet()
     val pen = PenSettings(context)
     val settings = Settings(context)
     val annotations = AnnotationStore(

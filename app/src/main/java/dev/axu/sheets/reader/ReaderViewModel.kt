@@ -39,12 +39,15 @@ sealed interface ReaderState {
          * first are null until the music on them has been found.
          */
         val crops: List<RectF?>,
-        val initialPage: Int,
     ) : ReaderState
 }
 
 class ReaderViewModel(private val uri: Uri, private val container: AppContainer) : ViewModel() {
     var state: ReaderState by mutableStateOf(ReaderState.Loading)
+        private set
+
+    /** The page in view, or to show when the reader appears. */
+    var page = 0
         private set
 
     /** The size pages are fitted into, once laid out. */
@@ -132,7 +135,8 @@ class ReaderViewModel(private val uri: Uri, private val container: AppContainer)
                     }
                 }
             }
-            ReaderState.Ready(document, pages, ink, key, crops, page)
+            this@ReaderViewModel.page = page
+            ReaderState.Ready(document, pages, ink, key, crops)
         } catch (e: Exception) {
             document.close()
             throw e
@@ -205,7 +209,14 @@ class ReaderViewModel(private val uri: Uri, private val container: AppContainer)
 
     fun onPageSettled(page: Int) {
         val ready = state as? ReaderState.Ready ?: return
+        this.page = page
         container.positions.save(ready.documentKey, page)
+    }
+
+    /** The sheet is kept loaded after leaving it, but only the page left on stays rendered. */
+    fun onLeft() {
+        val ready = state as? ReaderState.Ready ?: return
+        ready.pages.keepOnly(page)
     }
 
     private fun save(ready: ReaderState.Ready) =
