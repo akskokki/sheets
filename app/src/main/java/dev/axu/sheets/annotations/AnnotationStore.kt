@@ -2,6 +2,7 @@ package dev.axu.sheets.annotations
 
 import android.content.ContentResolver
 import android.net.Uri
+import android.os.ParcelFileDescriptor
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -9,14 +10,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
+import java.io.EOFException
 import java.io.FileNotFoundException
-import java.security.MessageDigest
+import java.nio.ByteBuffer
 
 /**
  * Stores each document's annotations, never touching the PDF itself.
  *
- * Annotations are keyed by a hash of the PDF's contents, so they follow the music when the file is
- * renamed or moved and don't get mixed up when two files share a name.
+ * Annotations are keyed by the PDF's contents ([DocumentKey]), so they follow the music when the
+ * file is renamed or moved and don't get mixed up when two files share a name.
  *
  * Every save goes to two places: app storage, which is always there, and the sheet music folder
  * (when the app may write to it), which survives uninstalling. Saves are timestamped; loading uses
@@ -52,18 +54,20 @@ class AnnotationStore(
         }
     }
 
+    /** Identifies [pdf] by its contents; see [DocumentKey]. */
     suspend fun keyOf(pdf: Uri): String = withContext(Dispatchers.IO) {
-        val digest = MessageDigest.getInstance("SHA-256")
-        val stream = resolver.openInputStream(pdf) ?: throw FileNotFoundException(pdf.toString())
-        stream.use {
-            val buffer = ByteArray(64 * 1024)
-            while (true) {
-                val read = it.read(buffer)
-                if (read < 0) break
-                digest.update(buffer, 0, read)
+        val file = resolver.openFileDescriptor(pdf, "r") ?: throw FileNotFoundException(pdf.toString())
+        val size = file.statSize
+        ParcelFileDescriptor.AutoCloseInputStream(file).use { input ->
+            if (size < 0) return@use DocumentKey.of(input)
+            DocumentKey.of(size) { offset, length ->
+                val bytes = ByteBuffer.allocate(length)
+                while (bytes.hasRemaining()) {
+                    if (input.channel.read(bytes, offset + bytes.position()) < 0) throw EOFException(pdf.toString())
+                }
+                bytes.array()
             }
         }
-        digest.digest().joinToString("") { "%02x".format(it) }
     }
 
     suspend fun load(key: String): Annotations = withContext(io) {

@@ -26,7 +26,7 @@ Losing them is the one unrecoverable mistake. The debug build is a separate app,
 - These must never change meaning, or existing notes and state are orphaned:
   - `applicationId`, `NOTES_DIRECTORY`, the `.ink` extension and `AnnotationCodec`'s magic number
   - brush family IDs in `Pens` and the pinned `PressurePenVersion` (add a new ID; never remap one)
-  - document keys (SHA-256 of the PDF bytes)
+  - document keys (`DocumentKey`: a SHA-256 of the PDF's size and its first and last 64 KB)
   - stroke coordinates: PDF points on the uncropped page, since crops are view-only
   - SharedPreferences file and key names, including pen colors and widths, which are stored by name
 - Release builds are signed with the build machine's `~/.android/debug.keystore`, and installed

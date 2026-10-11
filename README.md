@@ -50,7 +50,8 @@ The two builds are separate apps with separate data. Sheets Dev keeps its folder
   ignores finger gestures that start while the pen is down or hovering. The device's own
   palm rejection, if it has one, can be enabled for the app as well.
 - **Annotations** (`annotations/`): strokes are stored in PDF point coordinates, so they stay aligned
-  at any size or orientation, keyed by a SHA-256 of the PDF's contents. PDFs are never modified.
+  at any size or orientation, keyed by the PDF's contents (`DocumentKey`: a hash of its size and
+  its first and last 64 KB, so it's quick however large the file). PDFs are never modified.
   Each save goes to app storage and to a hidden `.annotations` folder inside the sheet music folder
   (once the app has write access; the library asks for it). The newest copy wins on load, so notes
   survive uninstalling: pick the same folder again and they're back. The file also records the
